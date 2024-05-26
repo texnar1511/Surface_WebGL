@@ -8,11 +8,14 @@ var vertexShaderText =
         uniform mat4 mModel;
         uniform mat4 mView;
         uniform mat4 mProj;
+
+        varying vec4 position;
         
         void main()
         {
-           fragColor = vertColor;
-           gl_Position = mProj * mView * mModel * vec4(vertPosition, 1.0);
+            fragColor = vertColor;
+            gl_Position = mProj * mView * mModel * vec4(vertPosition, 1.0);
+            position = gl_Position;
         }
     `;
 
@@ -23,14 +26,38 @@ var fragmentShaderText =
 
         varying vec3 fragColor;
 
+        //uniform float aspect;
+        //uniform float border_width;
+        //uniform float width;
+        //uniform float height;
+
+        varying vec4 position;
+
         void main()
         {
-           gl_FragColor = vec4(fragColor, 1.0);
+            //float maxX = 1.0 - border_width;
+            //float minX = border_width;
+            //float maxY = maxX / aspect;
+            //float minY = minX / aspect;
+
+            //float x = (1.0 + position.x / position.z) / 2.0;
+            //float y = (1.0 - position.y / position.z) / 2.0;
+
+            //if (x < maxX && x > minX && y < maxY && y > minY)
+            //{
+            //    gl_FragColor = vec4(fragColor, 1.0);
+            //}
+            //else
+            //{
+            //    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            //}
+            gl_FragColor = vec4(fragColor, 1.0);
         }
     `;
 
 function InitDemo() {
     console.log("It's working");
+    //console.log(mathCalc.pointOnTriangle(0, 0, -3, 2, -1, -1, 2, 4, 3, 3, -1));
     var SQRT32 = Math.sqrt(3) / 2;
     var SCREEN_EPSILON = 20;
     var pointInsideCircle = function (px, py, x, y) {
@@ -56,7 +83,7 @@ function InitDemo() {
     canvas.width = CANVAS_SCALE * canvas.clientWidth;
     canvas.height = CANVAS_SCALE * canvas.clientHeight;
 
-    console.log(canvas.width, canvas.height, canvas.clientWidth, canvas.clientHeight);
+    //console.log(canvas.width, canvas.height, canvas.clientWidth, canvas.clientHeight);
 
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -80,6 +107,12 @@ function InitDemo() {
     gl.clearColor(0, 0.3, 0.3, 0.3);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
+
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(2, 3);
+
+    //gl.depthRange(0.2, 0.8);
+
     //gl.enable(gl.CULL_FACE);
     //gl.frontFace(gl.CCW);
     //gl.cullFace(gl.BACK);
@@ -124,17 +157,47 @@ function InitDemo() {
 
     var MODEL_SCALE = 10;
 
+    var redHeight = 1.0;//1.0
+    var greenHeight = 0.5;//0.5
+    var blueHeight = 0.0;//0.0
+
     var boxVertices = [];
 
-    var fieldWidth = 4;
-    var fieldHeight = 5;
+    var fieldWidth = 20;//20;
+    var fieldHeight = 20;//20;
 
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
-            boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * Math.random() / 2, MODEL_SCALE * (j + (i % 2) / 2), Math.random(), Math.random(), Math.random());
+            var tmpHeight = Math.random();
+            var tmpRed = 0.0;
+            var tmpGreen = 0.0;
+            var tmpBlue = 0.0;
+            //console.log(tmpHeight);
+            if (blueHeight <= tmpHeight && tmpHeight <= greenHeight) {
+                tmpRed = 0.0;
+                tmpGreen = (tmpHeight - blueHeight) / (greenHeight - blueHeight);
+                tmpBlue = 1 - (tmpHeight - blueHeight) / (greenHeight - blueHeight);
+            }
+            if (greenHeight <= tmpHeight && tmpHeight <= redHeight) {
+                tmpRed = (tmpHeight - greenHeight) / (redHeight - greenHeight);
+                tmpGreen = 1 - (tmpHeight - greenHeight) / (redHeight - greenHeight);
+                tmpBlue = 0.0;
+            }
+            if (tmpHeight < blueHeight) {
+                tmpBlue = 1.0;
+            }
+            if (redHeight < tmpHeight) {
+                tmpRed = 1.0;
+            }
+            //console.log(tmpRed, tmpGreen, tmpBlue);
+            //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpHeight, tmpHeight, tmpHeight);
+            boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpRed, tmpGreen, tmpBlue);
+            //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), Math.random(), Math.random(), Math.random());
         }
     }
+
+    //console.log(boxVertices);
 
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
@@ -146,8 +209,31 @@ function InitDemo() {
                 0.0, 0.0, 0.0);
         }
     }
+
+    //cube rover
+    boxVertices.push(1, 0, 1, 1.0, 0.0, 1.0);
+    boxVertices.push(1, 0, -1, 1.0, 0.0, 1.0);
+    boxVertices.push(-1, 0, 1, 1.0, 0.0, 1.0);
+    boxVertices.push(-1, 0, -1, 1.0, 0.0, 1.0);
+    boxVertices.push(1, 2, 1, 1.0, 0.0, 1.0);
+    boxVertices.push(1, 2, -1, 1.0, 0.0, 1.0);
+    boxVertices.push(-1, 2, 1, 1.0, 0.0, 1.0);
+    boxVertices.push(-1, 2, -1, 1.0, 0.0, 1.0);
+    //black lines
+    boxVertices.push(1, 0, 1, 0.0, 0.0, 0.0);
+    boxVertices.push(1, 0, -1, 0.0, 0.0, 0.0);
+    boxVertices.push(-1, 0, 1, 0.0, 0.0, 0.0);
+    boxVertices.push(-1, 0, -1, 0.0, 0.0, 0.0);
+    boxVertices.push(1, 2, 1, 0.0, 0.0, 0.0);
+    boxVertices.push(1, 2, -1, 0.0, 0.0, 0.0);
+    boxVertices.push(-1, 2, 1, 0.0, 0.0, 0.0);
+    boxVertices.push(-1, 2, -1, 0.0, 0.0, 0.0);
+
+    //console.log(boxVertices.slice(0, fieldWidth * fieldHeight * 6));
+
+
     boxVertices = new Float32Array(boxVertices);
-    console.log(boxVertices, typeof (boxVertices));
+    //console.log(boxVertices, typeof (boxVertices));
 
     var boxIndices = [];
 
@@ -170,7 +256,7 @@ function InitDemo() {
         }
     }
 
-    var trianglesLength = boxIndices.length;
+    var trianglesLength = (fieldWidth - 1) * (fieldHeight - 1) * 6; //boxIndices.length;
 
     var offset = fieldWidth * fieldHeight;
 
@@ -196,12 +282,64 @@ function InitDemo() {
             }
         }
     }
-    boxIndices = new Float32Array(boxIndices);
-    console.log(boxIndices, typeof (boxIndices));
 
-    var linesLength = boxIndices.length - trianglesLength;
-    console.log(trianglesLength, linesLength);
-    console.log(Float32Array.BYTES_PER_ELEMENT);
+    var linesLength = (fieldWidth - 1) * (fieldHeight - 1) * 10;
+
+    boxIndices.push(2 * offset, 2 * offset + 1, 2 * offset + 2);
+    boxIndices.push(2 * offset + 1, 2 * offset + 2, 2 * offset + 3);
+    boxIndices.push(2 * offset + 4, 2 * offset + 5, 2 * offset + 6);
+    boxIndices.push(2 * offset + 5, 2 * offset + 6, 2 * offset + 7);
+
+    boxIndices.push(2 * offset, 2 * offset + 1, 2 * offset + 4);
+    boxIndices.push(2 * offset + 1, 2 * offset + 4, 2 * offset + 5);
+    boxIndices.push(2 * offset + 2, 2 * offset + 3, 2 * offset + 6);
+    boxIndices.push(2 * offset + 3, 2 * offset + 6, 2 * offset + 7);
+
+    boxIndices.push(2 * offset, 2 * offset + 2, 2 * offset + 4);
+    boxIndices.push(2 * offset + 2, 2 * offset + 4, 2 * offset + 6);
+    boxIndices.push(2 * offset + 1, 2 * offset + 3, 2 * offset + 5);
+    boxIndices.push(2 * offset + 3, 2 * offset + 5, 2 * offset + 7);
+
+    var roverLength = 3 * 12;
+
+    boxIndices.push(2 * offset + 8, 2 * offset + 9);
+    boxIndices.push(2 * offset + 10, 2 * offset + 11);
+    boxIndices.push(2 * offset + 8, 2 * offset + 10);
+    boxIndices.push(2 * offset + 9, 2 * offset + 11);
+
+    boxIndices.push(2 * offset + 12, 2 * offset + 13);
+    boxIndices.push(2 * offset + 14, 2 * offset + 15);
+    boxIndices.push(2 * offset + 12, 2 * offset + 14);
+    boxIndices.push(2 * offset + 13, 2 * offset + 15);
+
+    boxIndices.push(2 * offset + 8, 2 * offset + 9);
+    boxIndices.push(2 * offset + 12, 2 * offset + 13);
+    boxIndices.push(2 * offset + 8, 2 * offset + 12);
+    boxIndices.push(2 * offset + 9, 2 * offset + 13);
+
+    boxIndices.push(2 * offset + 10, 2 * offset + 11);
+    boxIndices.push(2 * offset + 14, 2 * offset + 15);
+    boxIndices.push(2 * offset + 10, 2 * offset + 14);
+    boxIndices.push(2 * offset + 11, 2 * offset + 15);
+
+    boxIndices.push(2 * offset + 8, 2 * offset + 10);
+    boxIndices.push(2 * offset + 12, 2 * offset + 14);
+    boxIndices.push(2 * offset + 8, 2 * offset + 12);
+    boxIndices.push(2 * offset + 10, 2 * offset + 14);
+
+    boxIndices.push(2 * offset + 9, 2 * offset + 11);
+    boxIndices.push(2 * offset + 13, 2 * offset + 15);
+    boxIndices.push(2 * offset + 9, 2 * offset + 13);
+    boxIndices.push(2 * offset + 11, 2 * offset + 15);
+
+    var roverLinesLength = 2 * 24;
+
+    boxIndices = new Float32Array(boxIndices);
+    //console.log(boxIndices, typeof (boxIndices));
+
+    //var linesLength = boxIndices.length - trianglesLength;
+    //console.log(trianglesLength, linesLength);
+    //console.log(Float32Array.BYTES_PER_ELEMENT);
 
 
 
@@ -249,10 +387,10 @@ function InitDemo() {
     var projMatrix = new Float32Array(16); // characteristics of camera
     glMatrix.mat4.identity(modelMatrix);
     //glMatrix.mat4.multiplyScalar(modelMatrix, modelMatrix, 10);
-    console.log(modelMatrix);
+    //console.log(modelMatrix);
     glMatrix.mat4.identity(viewMatrix);
     var cameraPosition = [0, 2, 0];
-    var cameraSpeed = 0.5;
+    var cameraSpeed = 1.0;
     var cameraRho = 1;
     var cameraYaw = 0.0;
     var cameraPitch = 0.0;
@@ -270,11 +408,47 @@ function InitDemo() {
     var changingPoint = -1;
     var dragSensitivity = 0.05;
 
+    //console.log(boxVertices[1]);
+    var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
+    var roverTargetPosition = [boxVertices[0] + 1, boxVertices[1], boxVertices[2]];
+
+    for (var i = 0; i < 16; i++) {
+        boxVertices[2 * 6 * offset + 6 * i + 1] += boxVertices[1];
+    }
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+    gl.vertexAttribPointer(
+        positionAttribLocation, //Attribute location
+        3, //number of elements per attribute
+        gl.FLOAT, //type of elements
+        gl.FALSE, //normalize
+        6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+        0 //offset from the beginning of a single vertex to this attribute
+    );//important2
+
+    //console.log(roverPosition);
+    //console.log(roverTargetPosition);
+    var roverSpeed = 0.5;
+    var roverSensitivity = 0.2;
+
+    var aspectRatio = canvas.clientWidth / canvas.clientHeight;
+    var borderWidth = 0.2;
+
+    var aspectRationUniformLocation = gl.getUniformLocation(program, 'aspect');
+    var borderWidthUniformLocation = gl.getUniformLocation(program, 'border_width');
+    var widthUniformLocation = gl.getUniformLocation(program, 'width');
+    var heightUniformLocation = gl.getUniformLocation(program, 'height');
+
+    gl.uniform1f(aspectRationUniformLocation, aspectRatio);
+    gl.uniform1f(borderWidthUniformLocation, borderWidth);
+    gl.uniform1f(widthUniformLocation, canvas.clientWidth);
+    gl.uniform1f(heightUniformLocation, canvas.clientHeight);
+
     glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
     //console.log(viewMatrix);
     //glMatrix.mat4.identity(viewMatrix);
     glMatrix.mat4.identity(projMatrix);
-    glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(90), canvas.clientWidth / canvas.clientHeight, 0.1, 100.0);
+    glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(90), aspectRatio, 0.1, 200.0);
 
     gl.uniformMatrix4fv(matModelUniformLocation, gl.FALSE, modelMatrix);
     gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
@@ -316,6 +490,69 @@ function InitDemo() {
         glMatrix.mat4.multiply(transform, view, transform);
         glMatrix.mat4.multiply(transform, projection, transform);
         return transform;
+    }
+
+    var findTriangle = function (r1, r2) {
+        var i = Math.floor(r1 / (MODEL_SCALE * SQRT32));
+        var j = Math.floor(r2 / MODEL_SCALE);
+
+        var res_i = r1 - i * MODEL_SCALE * SQRT32;
+        var res_j = r2 - j * MODEL_SCALE;
+
+        if (i % 2 == 0) {
+            if (res_i - 2 * SQRT32 * res_j > 0) {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j - 1;
+                var i_3 = i + 1;
+                var j_3 = j;
+            }
+            else if (res_i - 2 * SQRT32 * (MODEL_SCALE - res_j) > 0) {
+                var i_1 = i;
+                var j_1 = j + 1;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i + 1;
+                var j_3 = j + 1;
+            }
+            else {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i;
+                var j_3 = j + 1;
+            }
+        }
+        else {
+            if (res_i - SQRT32 * (MODEL_SCALE - 2 * res_j) < 0) {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i;
+                var j_3 = j - 1;
+            }
+            else if (res_i - SQRT32 * (2 * res_j - MODEL_SCALE) < 0) {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j + 1;
+                var i_3 = i;
+                var j_3 = j + 1;
+            }
+            else {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i + 1;
+                var j_3 = j + 1;
+            }
+        }
+
+        return [i_1, j_1, i_2, j_2, i_3, j_3];
     }
 
     //var check = [[1.0, 1.0, -1.0], [1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [-1.0, -1.0, -1.0], [0, 0, 0]];
@@ -372,13 +609,18 @@ function InitDemo() {
         //console.log(event.key);
 
         //event.preventDefault();
+        //console.log(event.key);
 
         switch (event.key) {
             case 'w':
                 //console.log('w');
-                var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
+                //console.log(c);
                 cameraPosition = mathCalc.findPointOnSegment(cameraPosition, targetPosition, cameraSpeed);
-                targetPosition = mathCalc.findPointOnSegment(targetPosition, t, cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //console.log(c);
+                //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, cameraSpeed);
                 //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
@@ -386,28 +628,34 @@ function InitDemo() {
                 break;
             case 'a':
                 //console.log('a');
-                var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
                 cameraPosition = mathCalc.findPointOnOrtSegment(cameraPosition, targetPosition, cameraSpeed);
-                targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, cameraSpeed);
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
                 break;
             case 's':
                 //console.log('s');
-                var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
                 cameraPosition = mathCalc.findPointOnSegment(cameraPosition, targetPosition, -cameraSpeed);
-                targetPosition = mathCalc.findPointOnSegment(targetPosition, t, -cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, -cameraSpeed);
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
                 break;
             case 'd':
                 //console.log('d');
-                var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
                 cameraPosition = mathCalc.findPointOnOrtSegment(cameraPosition, targetPosition, -cameraSpeed);
                 //console.log(cameraPosition);
-                targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, -cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, -cameraSpeed);
                 //console.log(targetPosition); w
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
@@ -429,7 +677,173 @@ function InitDemo() {
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
                 break;
+            case 'ArrowUp':
+                //var t = roverTargetPosition.map((num, idx) => 2 * num - roverPosition[idx]);
+                var r = roverPosition;
+                var f = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, roverSpeed);
+                var trig = findTriangle(f[0], f[2]);
+                //console.log(trig);
+                if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
+                    var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
+                    var y0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 1];
+                    var z0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 2];
+                    var x1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3]];
+                    var y1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 1];
+                    var z1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 2];
+                    var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
+                    var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
+                    var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
+                    var h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                }
+                else {
+                    var h = f[1];
+                }
+                //console.log(x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                //console.log(f[0], f[2]);
+                //console.log(h);
+                roverPosition = [f[0], h, f[2]];
+                roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
+                //roverPosition = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, roverSpeed);
+                //roverTargetPosition = roverTargetPosition.map((num, idx) => num + roverPosition[idx] - r[idx]);
+                //console.log(r);
+                //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, roverSpeed);
 
+                for (var i = 0; i < 16; i++) {
+                    boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
+                    //console.log(r);
+                }
+                //console.log(r);
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+            case 'ArrowDown':
+                //var t = roverTargetPosition.map((num, idx) => 2 * num - roverPosition[idx]);
+                //var r = roverPosition;
+                //roverPosition = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, -roverSpeed);
+                //roverTargetPosition = roverTargetPosition.map((num, idx) => num + roverPosition[idx] - r[idx]);
+                //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, -roverSpeed);
+
+                var r = roverPosition;
+                var f = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, -roverSpeed);
+                var trig = findTriangle(f[0], f[2]);
+
+                if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
+                    var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
+                    var y0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 1];
+                    var z0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 2];
+                    var x1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3]];
+                    var y1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 1];
+                    var z1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 2];
+                    var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
+                    var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
+                    var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
+                    var h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                }
+                else {
+                    var h = f[1];
+                }
+
+                roverPosition = [f[0], h, f[2]];
+                roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
+
+                for (var i = 0; i < 16; i++) {
+                    //boxVertices[offset * 6 * 2 + 6 * i] += roverPosition[0] - r[0];
+                    //boxVertices[offset * 6 * 2 + 6 * i + 2] += roverPosition[2] - r[2];
+                    boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
+                }
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+            case 'ArrowRight':
+                //var t = roverTargetPosition;
+                //console.log(t);
+                var res_1 = mathCalc.shiftRotateShift([roverTargetPosition[0], roverTargetPosition[2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
+                //roverTargetPosition[0] = roverPosition[0] + (t[0] - roverPosition[0]) * Math.cos(roverSensitivity) - (t[2] - roverPosition[2]) * Math.sin(roverSensitivity);
+                //console.log(t);
+                //roverTargetPosition[2] = roverPosition[2] + (t[0] - roverPosition[0]) * Math.sin(roverSensitivity) + (t[2] - roverPosition[2]) * Math.cos(roverSensitivity);
+                roverTargetPosition[0] = res_1[0];
+                roverTargetPosition[2] = res_1[1];
+
+                for (var i = 0; i < 16; i++) {
+                    //var x = boxVertices[offset * 6 * 2 + 6 * i];
+                    //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
+                    var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
+                    boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];
+                    //boxVertices[offset * 6 * 2 + 6 * i] = roverPosition[0] + (x - roverPosition[0]) * Math.cos(roverSensitivity) - (y - roverPosition[2]) * Math.sin(roverSensitivity);
+                    //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] + (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
+                }
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+            case 'ArrowLeft':
+                //var t = roverTargetPosition;
+                //roverTargetPosition[0] = roverPosition[0] + (t[0] - roverPosition[0]) * Math.cos(roverSensitivity) + (t[2] - roverPosition[2]) * Math.sin(roverSensitivity);
+                //roverTargetPosition[2] = roverPosition[2] - (t[0] - roverPosition[0]) * Math.sin(roverSensitivity) + (t[2] - roverPosition[2]) * Math.cos(roverSensitivity);
+                var res_1 = mathCalc.shiftRotateShift([roverTargetPosition[0], roverTargetPosition[2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
+                roverTargetPosition[0] = res_1[0];
+                roverTargetPosition[2] = res_1[1];
+
+                for (var i = 0; i < 16; i++) {
+                    var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
+                    boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];
+                    //var x = boxVertices[offset * 6 * 2 + 6 * i];
+                    //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
+                    //boxVertices[offset * 6 * 2 + 6 * i] = roverPosition[0] + (x - roverPosition[0]) * Math.cos(roverSensitivity) + (y - roverPosition[2]) * Math.sin(roverSensitivity);
+                    //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] - (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
+                }
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
 
         }
 
@@ -547,7 +961,8 @@ function InitDemo() {
         //    cameraPitch += pitch
         //}
 
-        document.getElementById('information').innerHTML = `yaw: ${Math.round(yaw)}\npitch: ${Math.round(pitch)}\ncameraYaw: ${Math.round(cameraYaw)}\ncameraPitch: ${Math.round(cameraPitch)}\n`;
+        //document.getElementById('information').innerHTML = `yaw: ${Math.round(yaw)}\npitch: ${Math.round(pitch)}\ncameraYaw: ${Math.round(cameraYaw)}\ncameraPitch: ${Math.round(cameraPitch)}\n`;
+        //document.getElementById('information').innerHTML = `cameraYaw: ${Math.round(cameraYaw)} cameraPitch: ${Math.round(cameraPitch)}\n`;
         //if (cameraPitch > pitchLock) {
         //    alert('cameraPitch more than pitchLock');
         //}
@@ -601,9 +1016,9 @@ function InitDemo() {
         );
         targetPosition = [result[0], result[1], result[2]];
 
-        var check = [targetPosition[0] - cameraPosition[0], targetPosition[1] - cameraPosition[1], targetPosition[2] - cameraPosition[2]];
-        document.getElementById('information').innerHTML += `forward vector: ${check.map(x => x.toFixed(3))}\nort vector: ${mathCalc.findOrtVector(check).map(x => x.toFixed(3))}\n`;
-        document.getElementById('information').innerHTML += `camPos: ${cameraPosition.map(x => x.toFixed(3))}`;
+        //var check = [targetPosition[0] - cameraPosition[0], targetPosition[1] - cameraPosition[1], targetPosition[2] - cameraPosition[2]];
+        //document.getElementById('information').innerHTML += `forward vector: ${check.map(x => x.toFixed(3))}\nort vector: ${mathCalc.findOrtVector(check).map(x => x.toFixed(3))}\n`;
+        //document.getElementById('information').innerHTML += `camPos: ${cameraPosition.map(x => x.toFixed(3))}\n`;
         //console.log(event.movementX, event.movementY, cameraYaw, cameraPitch, targetPosition, cameraPosition);
 
         //viewMatrix = glMatrix.mat4.create();
@@ -615,8 +1030,24 @@ function InitDemo() {
 
     var onMouseDownMoveUp = function (event) {
         if (changingPoint >= 0) {
+            //console.log(event.movementY * dragSensitivity);
             boxVertices[changingPoint + 1] -= event.movementY * dragSensitivity;
             boxVertices[changingPoint + 6 * offset + 1] -= event.movementY * dragSensitivity;
+
+            boxVertices[changingPoint + 3] = boxVertices[changingPoint + 1] / MODEL_SCALE;
+            boxVertices[changingPoint + 4] = boxVertices[changingPoint + 1] / MODEL_SCALE;
+            boxVertices[changingPoint + 5] = boxVertices[changingPoint + 1] / MODEL_SCALE;
+
+            //if (event.movementY >= 0) {
+            //    boxVertices[changingPoint + 3] = Math.max(boxVertices[changingPoint + 3] - event.movementY * dragSensitivity / MODEL_SCALE, 0.0);
+            //    boxVertices[changingPoint + 4] = Math.max(boxVertices[changingPoint + 4] - event.movementY * dragSensitivity / MODEL_SCALE, 0.0);
+            //    boxVertices[changingPoint + 5] = Math.max(boxVertices[changingPoint + 5] - event.movementY * dragSensitivity / MODEL_SCALE, 0.0);
+            //}
+            //else {
+            //    boxVertices[changingPoint + 3] = Math.min(boxVertices[changingPoint + 3] - event.movementY * dragSensitivity / MODEL_SCALE, 1.0);
+            //    boxVertices[changingPoint + 4] = Math.min(boxVertices[changingPoint + 4] - event.movementY * dragSensitivity / MODEL_SCALE, 1.0);
+            //    boxVertices[changingPoint + 5] = Math.min(boxVertices[changingPoint + 5] - event.movementY * dragSensitivity / MODEL_SCALE, 1.0);
+            //}
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
             gl.vertexAttribPointer(
                 positionAttribLocation, //Attribute location
@@ -637,7 +1068,7 @@ function InitDemo() {
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
             if (x >= 0 && x <= canvas.clientWidth && y >= 0 && y <= canvas.clientHeight) {
-                console.log(`tap: ${x}, ${y}`);
+                //console.log(`tap: ${x}, ${y}`);
                 for (var i = 0; i < fieldWidth; i++) {
                     for (var j = 0; j < fieldHeight; j++) {
                         //console.log(boxVertices[6 * (i * fieldHeight + j)], boxVertices[6 * (i * fieldHeight + j) + 1], boxVertices[6 * (i * fieldHeight + j) + 2]);
@@ -662,7 +1093,7 @@ function InitDemo() {
                         if (screenX >= 0 && screenX <= canvas.clientWidth && screenY >= 0 && screenY <= canvas.clientHeight) {
                             //console.log(pointInsideCircle(screenX, screenY, x, y));
                             if (pointInsideCircle(screenX, screenY, x, y)) {
-                                console.log(`res screen double: ${screenX}, ${screenY}`);
+                                //console.log(`res screen double: ${screenX}, ${screenY}`);
 
                                 if (distance2(screenX, screenY, x, y) < temp_distance) {
                                     changingPoint = 6 * (i * fieldHeight + j);
@@ -732,17 +1163,21 @@ function InitDemo() {
                 //    );
                 //    var screenX = (1 + res[0] / res[2]) * canvas.width / 2;
                 //    var screenY = (1 - res[1] / res[2]) * canvas.height / 2;
-                //    console.log(screenX, screenY);
+                //      console.log(screenX, screenY);
                 //}
                 //canvas.addEventListener('mousemove', onMouseDownMoveUp, false);
             }
         }
+        //canvas.removeEventListener('mousemove', onMouseDownMoveUp, false);
     }
 
     var onMouseUp = function (event) {
         canvas.removeEventListener('mousemove', onMouseDownMoveUp, false);
         changingPoint = -1;
     }
+
+
+
     //canvas.onclick = function () {
     //    canvas.requestPointerLock();
     //}
@@ -757,6 +1192,9 @@ function InitDemo() {
                 canvas.requestPointerLock();
                 canvas.removeEventListener('mousedown', onMouseDown, false);
                 canvas.removeEventListener('mouseup', onMouseUp, false);
+            }
+            if (event.key == 'r') {
+
             }
         },
         false
@@ -785,11 +1223,105 @@ function InitDemo() {
     // Main render loop
     //
     //gl.lineWidth(5);
-    console.log(gl.getParameter(gl.LINE_WIDTH));
+    //console.log(gl.getParameter(gl.LINE_WIDTH));
     var identityMatrix = new Float32Array(16);
     glMatrix.mat4.identity(identityMatrix);
     var angle = 0;
     function loop() {
+
+        var check1 = [targetPosition[0] - cameraPosition[0], targetPosition[1] - cameraPosition[1], targetPosition[2] - cameraPosition[2]];
+        var check2 = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+
+        var i = Math.floor(roverPosition[0] / (MODEL_SCALE * SQRT32));
+        var j = Math.floor(roverPosition[2] / MODEL_SCALE);
+
+        var res_i = roverPosition[0] - i * MODEL_SCALE * SQRT32;
+        var res_j = roverPosition[2] - j * MODEL_SCALE;
+
+        if (i % 2 == 0) {
+            if (res_i - 2 * SQRT32 * res_j > 0) {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j - 1;
+                var i_3 = i + 1;
+                var j_3 = j;
+            }
+            else if (res_i - 2 * SQRT32 * (MODEL_SCALE - res_j) > 0) {
+                var i_1 = i;
+                var j_1 = j + 1;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i + 1;
+                var j_3 = j + 1;
+            }
+            else {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i;
+                var j_3 = j + 1;
+            }
+        }
+        else {
+            if (res_i - SQRT32 * (MODEL_SCALE - 2 * res_j) < 0) {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i;
+                var j_3 = j - 1;
+            }
+            else if (res_i - SQRT32 * (2 * res_j - MODEL_SCALE) < 0) {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j + 1;
+                var i_3 = i;
+                var j_3 = j + 1;
+            }
+            else {
+                var i_1 = i;
+                var j_1 = j;
+                var i_2 = i + 1;
+                var j_2 = j;
+                var i_3 = i + 1;
+                var j_3 = j + 1;
+            }
+        }
+
+        document.getElementById('information').innerHTML =
+            `cameraYaw: ${cameraYaw.toFixed(1)}
+cameraPitch: ${cameraPitch.toFixed(1)}
+camera: ${cameraPosition.map(x => x.toFixed(3))}
+camera forward: ${check1.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check1).toFixed(3)}
+rover: ${roverPosition.map(x => x.toFixed(3))}
+rover forward: ${check2.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check2).toFixed(3)}
+i: ${i} j: ${j}
+res_i: ${res_i.toFixed(3)} res_j: ${res_j.toFixed(3)}
+i_1: ${i_1} j_1: ${j_1}
+i_2: ${i_2} j_2: ${j_2}
+i_3: ${i_3} j_3: ${j_3}`;
+        //box: ${boxVertices[6 * fieldHeight * i + 6 * j].toFixed(3)}, ${boxVertices[6 * fieldHeight * i + 6 * j + 1].toFixed(3)}, ${boxVertices[6 * fieldHeight * i + 6 * j + 2].toFixed(3)}
+
+        //console.log(text);
+        //document.getElementById('information').innerHTML
+
+        //document.getElementById('information').innerHTML += `forward vector: ${check.map(x => x.toFixed(3))}\nort vector: ${mathCalc.findOrtVector(check).map(x => x.toFixed(3))}\n`;
+        //document.getElementById('information').innerHTML += `camPos: ${cameraPosition.map(x => x.toFixed(3))}\n`;
+
+        //console.log(roverPosition);
+        //console.log(roverTargetPosition);
+        //var i = Math.floor(roverPosition[0] / (MODEL_SCALE * SQRT32));
+        //var j = Math.floor(roverPosition[2] / MODEL_SCALE - (i % 2) / 2);
+        //var j_2 = Math.floor(roverPosition[2] / MODEL_SCALE);
+        //console.log([i, j], [i, j + 1], [i + 1, j + 0.5], [i + 1, j + 1.5]);
+        //Math.floor(roverPosition[2] * 2 / MODEL_SCALE)
+        //console.log(i, j);
+        //console.log(boxVertices[6 * i * fieldHeight]);
+        //console.log(boxVertices[6 * i * fieldHeight + 6 * j]);
+
         //console.log(document.pointerLockElement);
         //console.log(mathCalc.toDegrees(cameraYaw), mathCalc.toDegrees(cameraPitch));
 
@@ -855,7 +1387,9 @@ function InitDemo() {
 
         gl.drawElements(gl.TRIANGLES, trianglesLength, gl.UNSIGNED_SHORT, 0);
         gl.drawElements(gl.LINES, linesLength, gl.UNSIGNED_SHORT, trianglesLength * 2);
-        //gl.drawElements(gl.LINES, linesLen5th, gl.UNSIGNED_SHORT, 20);
+        gl.drawElements(gl.TRIANGLES, roverLength, gl.UNSIGNED_SHORT, trianglesLength * 2 + linesLength * 2);
+        gl.drawElements(gl.LINES, roverLinesLength, gl.UNSIGNED_SHORT, trianglesLength * 2 + linesLength * 2 + roverLength * 2);
+        //gl.drawElements(gl.LINES, linesLength, gl.UNSIGNED_SHORT, 20);
         requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);

@@ -1,7 +1,7 @@
 #canvas-wrapper {
     position: relative;
     width: 800px;
-    height: 550px;
+    height: 450px;
 }
 
 .canvas_style {
@@ -35,6 +35,21 @@
     position: absolute;
     top: 0;
     left: 0;
-    user-select: none;
+    /*user-select: none;*/
+    pointer-events: none;
     z-index: 1;
+    color: black;
+}
+
+#canvas2-wrapper {
+    position: relative;
+    width: 800px;
+    height: 250px;
+}
+
+.canvas2_style {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 1px solid black;
 }

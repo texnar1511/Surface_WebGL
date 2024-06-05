@@ -59,7 +59,7 @@ function InitDemo() {
     console.log("It's working");
     //console.log(mathCalc.pointOnTriangle(0, 0, -3, 2, -1, -1, 2, 4, 3, 3, -1));
     var SQRT32 = Math.sqrt(3) / 2;
-    var SCREEN_EPSILON = 20;
+    var SCREEN_EPSILON = 10;
     var pointInsideCircle = function (px, py, x, y) {
         return Math.pow(x - px, 2) + Math.pow(y - py, 2) <= Math.pow(SCREEN_EPSILON, 2);
     };
@@ -71,17 +71,26 @@ function InitDemo() {
     //console.log(mathCalc.findPointOnOrtSegment([0, 1, 1], [1, 2, 3], 1));
     //console.log(mathCalc.findPointOnOrtSegment([1, 2, 3], [2, 3, 5], 1));
 
-    var canvas = document.getElementById("canvas");
+    //var canvas = document.getElementById("canvas");
+    var canvases = document.getElementsByTagName("canvas");
+    //console.log(canvases);
+    var canvas = canvases[0];
     var gl = canvas.getContext("webgl");
     //gl.canvas.width = window.;
     //gl.canvas.height = 500;
     //console.log(canvas.width, canvas.height);
     //console.log(canvas.clientWidth, canvas.clientHeight);
 
+    var canvas2 = canvases[1];
+    var ctx = canvas2.getContext("2d");
+
     var CANVAS_SCALE = 1
 
     canvas.width = CANVAS_SCALE * canvas.clientWidth;
     canvas.height = CANVAS_SCALE * canvas.clientHeight;
+
+    canvas2.width = canvas2.clientWidth;
+    canvas2.height = canvas2.clientHeight;
 
     //console.log(canvas.width, canvas.height, canvas.clientWidth, canvas.clientHeight);
 
@@ -98,6 +107,24 @@ function InitDemo() {
     if (!gl) {
         alert("browser doesn't support webgl");
     }
+
+    if (!ctx) {
+        alert("browser doesn't support canvas 2d context");
+    }
+
+    ctx.translate(canvas2.width / 2, canvas2.height);
+    var contextScale = 10;
+    ctx.scale(contextScale, -contextScale);
+
+    //ctx.clearRect(0, 0, canvas2.width, canvas2.height);
+    //ctx.beginPath();
+    //ctx.moveTo(75, 50);
+    //ctx.lineTo(100, 75);
+    //ctx.lineTo(100, 25);
+    //ctx.lineTo(75, 50);
+    //ctx.stroke();
+
+    //drawArray([[0, 0], [120, 100]]);
 
     //canvas.width = window.innerWidth;
     //canvas.height = window.innerHeight;
@@ -156,6 +183,7 @@ function InitDemo() {
     //
 
     var MODEL_SCALE = 10;
+    var pathEpsilon = 0.01;
 
     var redHeight = 1.0;//1.0
     var greenHeight = 0.5;//0.5
@@ -555,6 +583,120 @@ function InitDemo() {
         return [i_1, j_1, i_2, j_2, i_3, j_3];
     }
 
+    var findHeight = function (x, y, defaultValue = 0) {
+        var trig = findTriangle(x, y);
+        var h = defaultValue;
+        if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
+            var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
+            var y0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 1];
+            var z0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 2];
+            var x1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3]];
+            var y1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 1];
+            var z1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 2];
+            var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
+            var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
+            var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
+            h = mathCalc.pointOnTriangle(x, y, x0, y0, z0, x1, y1, z1, x2, y2, z2);
+        }
+        return h;
+    }
+
+    var findPath = function (rovPos, rovTarPos, rovSpd) {
+        //console.log(rovPos, rovTarPos, rovSpd);
+        var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
+        //console.log(forward);
+        var ticks = 20;
+
+        var startX = rovPos[0] - ticks * rovSpd * forward[0];
+        var startY = rovPos[2] - ticks * rovSpd * forward[2];
+        //console.log(startX, startY);
+
+        var endX = rovPos[0] + ticks * rovSpd * forward[0];
+        var endY = rovPos[2] + ticks * rovSpd * forward[2];
+        //console.log(endX, endY);
+
+        var ans = [];
+
+        var a = startX <= endX;
+        var b = startY <= endY;
+
+        var check_a = a ? endX - startX : startX - endX;
+        var check_b = b ? endY - startY : startY - endY;
+
+        while (check_a >= 0 && check_b >= 0) {
+            ans.push([startX, findHeight(startX, startY), startY]);
+            startX += pathEpsilon * MODEL_SCALE * forward[0];
+            startY += pathEpsilon * MODEL_SCALE * forward[2];
+            check_a = a ? endX - startX : startX - endX;
+            check_b = b ? endY - startY : startY - endY;
+        }
+
+        return ans;
+    }
+
+    var roverContextPosition = function () {
+        var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+        var n = mathCalc.euclidNorm(forw);
+        var k = forw[2] > 0 ? roverPosition[2] * forw[2] + roverPosition[0] * forw[0] : -roverPosition[2] * forw[2] - roverPosition[0] * forw[0];
+        return [k / n, roverPosition[1]];
+    }
+
+    var roverBackForwardPath = function () {
+        var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+        var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+        //console.log(pth);
+        //console.log(forw);
+        var cnv2Array = [];
+        for (var i = 0; i < pth.length; i++) {
+            //console.log();
+            var n = mathCalc.euclidNorm(forw);
+            var k = forw[2] > 0 ? pth[i][2] * forw[2] + pth[i][0] * forw[0] : -pth[i][2] * forw[2] - pth[i][0] * forw[0];
+            //cnv2Array.push([(pth[i][2] * forw[2] + pth[i][0] * forw[0]) / n, (pth[i][0] * forw[2] - pth[i][2] * forw[0]) / n]);
+            cnv2Array.push([k / n, pth[i][1]]);
+            //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+        }
+        //console.table(pth);
+        //console.table(cnv2Array);
+        return cnv2Array;
+    }
+
+    var drawArray = function (a) {
+        //ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        ctx.lineWidth = 2 / contextScale;
+        ctx.beginPath();
+        ctx.moveTo(a[0][0], a[0][1]);
+        for (var i = 1; i < a.length; i++) {
+            ctx.lineTo(a[i][0], a[i][1]);
+        }
+        ctx.stroke();
+    }
+
+    var drawContext = function (path, pos) {
+        ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        drawArray(path);
+        ctx.strokeStyle = "#ff00ff";
+        ctx.beginPath();
+        ctx.moveTo(pos[0], pos[1]);
+        ctx.lineTo(pos[0], pos[1] + 5);
+        ctx.stroke();
+        ctx.strokeStyle = "#000000";
+    }
+
+    //console.log(roverBackForwardPath());
+    drawContext(roverBackForwardPath(), roverContextPosition());
+
+    //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+    //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+    ////console.log(pth);
+    //var cnv2Array = [];
+    //for (var i = 0; i < pth.length; i++) {
+    //    //console.log();
+    //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+    //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+    //}
+    //console.log(pth);
+    //console.log(cnv2Array);
+
     //var check = [[1.0, 1.0, -1.0], [1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [-1.0, -1.0, -1.0], [0, 0, 0]];
     //for (var i = 0; i < check.length; i++) {
     //    console.log(check[i]);
@@ -682,6 +824,7 @@ function InitDemo() {
                 var r = roverPosition;
                 var f = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, roverSpeed);
                 var trig = findTriangle(f[0], f[2]);
+                var h = 0.0;
                 //console.log(trig);
                 if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
                     var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
@@ -693,11 +836,11 @@ function InitDemo() {
                     var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
                     var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
                     var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
-                    var h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                    h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
                 }
-                else {
-                    var h = f[1];
-                }
+                //else {
+                //    var h = f[1];
+                //}
                 //console.log(x0, y0, z0, x1, y1, z1, x2, y2, z2);
                 //console.log(f[0], f[2]);
                 //console.log(h);
@@ -719,6 +862,10 @@ function InitDemo() {
                 //console.log(roverPosition);
                 //console.log(roverTargetPosition);
 
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
+
+
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
                     positionAttribLocation, //Attribute location
@@ -739,6 +886,7 @@ function InitDemo() {
                 var r = roverPosition;
                 var f = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, -roverSpeed);
                 var trig = findTriangle(f[0], f[2]);
+                var h = 0.0;
 
                 if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
                     var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
@@ -750,11 +898,11 @@ function InitDemo() {
                     var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
                     var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
                     var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
-                    var h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                    h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
                 }
-                else {
-                    var h = f[1];
-                }
+                //else {
+                //    var h = f[1];
+                //}
 
                 roverPosition = [f[0], h, f[2]];
                 roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
@@ -769,6 +917,21 @@ function InitDemo() {
 
                 //console.log(roverPosition);
                 //console.log(roverTargetPosition);
+
+                //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+                //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+                ////console.log(pth);
+                //var cnv2Array = [];
+                //for (var i = 0; i < pth.length; i++) {
+                //    //console.log();
+                //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+                //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+                //}
+                ////console.log(pth);
+                //console.log(cnv2Array);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -803,6 +966,21 @@ function InitDemo() {
                 //console.log(roverPosition);
                 //console.log(roverTargetPosition);
 
+                //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+                //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+                ////console.log(pth);
+                //var cnv2Array = [];
+                //for (var i = 0; i < pth.length; i++) {
+                //    //console.log();
+                //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+                //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+                //}
+                ////console.log(pth);
+                //console.log(cnv2Array);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
+
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
                     positionAttribLocation, //Attribute location
@@ -833,6 +1011,21 @@ function InitDemo() {
 
                 //console.log(roverPosition);
                 //console.log(roverTargetPosition);
+
+                //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+                //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+                ////console.log(pth);
+                //var cnv2Array = [];
+                //for (var i = 0; i < pth.length; i++) {
+                //    //console.log();
+                //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+                //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+                //}
+                ////console.log(pth);
+                //console.log(cnv2Array);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1298,12 +1491,13 @@ camera: ${cameraPosition.map(x => x.toFixed(3))}
 camera forward: ${check1.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check1).toFixed(3)}
 rover: ${roverPosition.map(x => x.toFixed(3))}
 rover forward: ${check2.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check2).toFixed(3)}
+scale: ${MODEL_SCALE}
 i: ${i} j: ${j}
 res_i: ${res_i.toFixed(3)} res_j: ${res_j.toFixed(3)}
 i_1: ${i_1} j_1: ${j_1}
 i_2: ${i_2} j_2: ${j_2}
 i_3: ${i_3} j_3: ${j_3}`;
-        //box: ${boxVertices[6 * fieldHeight * i + 6 * j].toFixed(3)}, ${boxVertices[6 * fieldHeight * i + 6 * j + 1].toFixed(3)}, ${boxVertices[6 * fieldHeight * i + 6 * j + 2].toFixed(3)}
+        //box: ${ boxVertices[6 * fieldHeight * i + 6 * j].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 1].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 2].toFixed(3) }
 
         //console.log(text);
         //document.getElementById('information').innerHTML

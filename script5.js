@@ -438,7 +438,7 @@ function InitDemo() {
 
     //console.log(boxVertices[1]);
     var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
-    var roverTargetPosition = [boxVertices[0] + 1, boxVertices[1], boxVertices[2]];
+    var roverTargetPosition = [boxVertices[0], boxVertices[1], boxVertices[2] - 1];
 
     for (var i = 0; i < 16; i++) {
         boxVertices[2 * 6 * offset + 6 * i + 1] += boxVertices[1];
@@ -637,7 +637,8 @@ function InitDemo() {
     var roverContextPosition = function () {
         var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
         var n = mathCalc.euclidNorm(forw);
-        var k = forw[2] > 0 ? roverPosition[2] * forw[2] + roverPosition[0] * forw[0] : -roverPosition[2] * forw[2] - roverPosition[0] * forw[0];
+        //var k = forw[2] > 0 ? roverPosition[2] * forw[2] + roverPosition[0] * forw[0] : -roverPosition[2] * forw[2] - roverPosition[0] * forw[0];
+        var k = roverPosition[2] * forw[2] + roverPosition[0] * forw[0];
         return [k / n, roverPosition[1]];
     }
 
@@ -650,7 +651,8 @@ function InitDemo() {
         for (var i = 0; i < pth.length; i++) {
             //console.log();
             var n = mathCalc.euclidNorm(forw);
-            var k = forw[2] > 0 ? pth[i][2] * forw[2] + pth[i][0] * forw[0] : -pth[i][2] * forw[2] - pth[i][0] * forw[0];
+            //var k = forw[2] > 0 ? pth[i][2] * forw[2] + pth[i][0] * forw[0] : -pth[i][2] * forw[2] - pth[i][0] * forw[0];
+            var k = pth[i][2] * forw[2] + pth[i][0] * forw[0];
             //cnv2Array.push([(pth[i][2] * forw[2] + pth[i][0] * forw[0]) / n, (pth[i][0] * forw[2] - pth[i][2] * forw[0]) / n]);
             cnv2Array.push([k / n, pth[i][1]]);
             //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);

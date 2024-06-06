@@ -83,6 +83,7 @@ function InitDemo() {
 
     var canvas2 = canvases[1];
     var ctx = canvas2.getContext("2d");
+    var contextScale = 10;
 
     var CANVAS_SCALE = 1
 
@@ -112,9 +113,9 @@ function InitDemo() {
         alert("browser doesn't support canvas 2d context");
     }
 
-    ctx.translate(canvas2.width / 2, canvas2.height);
-    var contextScale = 10;
-    ctx.scale(contextScale, -contextScale);
+    //ctx.translate(canvas2.width / 2, canvas2.height);
+    //var contextScale = 10;
+    //ctx.scale(contextScale, -contextScale);
 
     //ctx.clearRect(0, 0, canvas2.width, canvas2.height);
     //ctx.beginPath();
@@ -197,7 +198,7 @@ function InitDemo() {
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
-            var tmpHeight = Math.random();
+            var tmpHeight = 2 * Math.random();
             var tmpRed = 0.0;
             var tmpGreen = 0.0;
             var tmpBlue = 0.0;
@@ -438,7 +439,7 @@ function InitDemo() {
 
     //console.log(boxVertices[1]);
     var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
-    var roverTargetPosition = [boxVertices[0], boxVertices[1], boxVertices[2] - 1];
+    var roverTargetPosition = [boxVertices[0], boxVertices[1], boxVertices[2] + 1];
 
     for (var i = 0; i < 16; i++) {
         boxVertices[2 * 6 * offset + 6 * i + 1] += boxVertices[1];
@@ -605,6 +606,7 @@ function InitDemo() {
         //console.log(rovPos, rovTarPos, rovSpd);
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
+        //console.log(forward);
         var ticks = 20;
 
         var startX = rovPos[0] - ticks * rovSpd * forward[0];
@@ -646,6 +648,7 @@ function InitDemo() {
         var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
         var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
         //console.log(pth);
+        //console.log(roverPosition);
         //console.log(forw);
         var cnv2Array = [];
         for (var i = 0; i < pth.length; i++) {
@@ -653,7 +656,7 @@ function InitDemo() {
             var n = mathCalc.euclidNorm(forw);
             //var k = forw[2] > 0 ? pth[i][2] * forw[2] + pth[i][0] * forw[0] : -pth[i][2] * forw[2] - pth[i][0] * forw[0];
             var k = pth[i][2] * forw[2] + pth[i][0] * forw[0];
-            //cnv2Array.push([(pth[i][2] * forw[2] + pth[i][0] * forw[0]) / n, (pth[i][0] * forw[2] - pth[i][2] * forw[0]) / n]);
+            //cnv2Array.push([(pth[i][0] * forw[0] + pth[i][2] * forw[2]) / n, (pth[i][0] * forw[2] - pth[i][2] * forw[0]) / n]);
             cnv2Array.push([k / n, pth[i][1]]);
             //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
         }
@@ -664,7 +667,6 @@ function InitDemo() {
 
     var drawArray = function (a) {
         //ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
-        ctx.lineWidth = 2 / contextScale;
         ctx.beginPath();
         ctx.moveTo(a[0][0], a[0][1]);
         for (var i = 1; i < a.length; i++) {
@@ -674,12 +676,22 @@ function InitDemo() {
     }
 
     var drawContext = function (path, pos) {
+        ctx.resetTransform();
+        ctx.translate(0, canvas2.height);
+        ctx.scale(1, -contextScale);
+        //ctx.scale(contextScale, contextScale);
+        var b = -path[0][0];
+        var k = canvas2.width / (path[path.length - 1][0] - path[0][0]);
+        //console.log(k, b);
+        ctx.scale(k, 1);
+        ctx.translate(b, 0);
+        ctx.lineWidth = 1 / contextScale;
         ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
         drawArray(path);
         ctx.strokeStyle = "#ff00ff";
         ctx.beginPath();
         ctx.moveTo(pos[0], pos[1]);
-        ctx.lineTo(pos[0], pos[1] + 5);
+        ctx.lineTo(pos[0], pos[1] + 3);
         ctx.stroke();
         ctx.strokeStyle = "#000000";
     }

@@ -12,13 +12,19 @@
 
     var ABRACADABRA = 3;
 
-    class Point3D {
+    var Point2D = class {
 
-        constructor(vec) {
-            this.x = vec[0];
-            this.y = vec[1];
-            this.z = vec[2];
-            this.vec = vec;
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        calcNorm() {
+            return Math.sqrt(this.x * this.x + this.y * this.y);
+        }
+
+        get norm() {
+            return this.calcNorm();
         }
 
     }

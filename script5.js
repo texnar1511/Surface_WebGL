@@ -83,7 +83,7 @@ function InitDemo() {
 
     var canvas2 = canvases[1];
     var ctx = canvas2.getContext("2d");
-    var contextScale = 10;
+    //var contextScale = 10;
 
     var CANVAS_SCALE = 1
 
@@ -607,7 +607,7 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var ticks = 20;
+        var ticks = 40;
 
         var startX = rovPos[0] - ticks * rovSpd * forward[0];
         var startY = rovPos[2] - ticks * rovSpd * forward[2];
@@ -675,17 +675,20 @@ function InitDemo() {
         ctx.stroke();
     }
 
+    var contextScale = 10;
+
     var drawContext = function (path, pos) {
         ctx.resetTransform();
-        ctx.translate(0, canvas2.height);
-        ctx.scale(1, -contextScale);
+        console.log(pos);
+        ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height);
+        ctx.scale(contextScale, -contextScale);
         //ctx.scale(contextScale, contextScale);
-        var b = -path[0][0];
-        var k = canvas2.width / (path[path.length - 1][0] - path[0][0]);
+        //var b = -path[0][0];
+        //var k = canvas2.width / (path[path.length - 1][0] - path[0][0]);
         //console.log(k, b);
-        ctx.scale(k, 1);
-        ctx.translate(b, 0);
-        ctx.lineWidth = 1 / contextScale;
+        //ctx.scale(k, 1);
+        //ctx.translate(b, 0);
+        ctx.lineWidth = 3 / contextScale;
         ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
         drawArray(path);
         ctx.strokeStyle = "#ff00ff";

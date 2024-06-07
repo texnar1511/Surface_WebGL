@@ -9,6 +9,8 @@ var vertexShaderText =
         uniform mat4 mView;
         uniform mat4 mProj;
 
+        varying float height;
+
         varying vec4 position;
         
         void main()
@@ -16,11 +18,12 @@ var vertexShaderText =
             fragColor = vertColor;
             gl_Position = mProj * mView * mModel * vec4(vertPosition, 1.0);
             position = gl_Position;
+            height = vertPosition.y;
         }
     `;
 
 
-var fragmentShaderText =
+var fragmentShaderText1 =
     `
         precision mediump float;
 
@@ -30,8 +33,52 @@ var fragmentShaderText =
         //uniform float border_width;
         //uniform float width;
         //uniform float height;
+        uniform float maxHeight;
+
+        varying float height;
 
         varying vec4 position;
+
+        vec3 getColor(float f)
+        {
+            float a = (1.0 - f) * 4.0;
+            int x = int(floor(a));
+            float y = a - floor(a);
+            float r = 0.0;
+            float g = 0.0;
+            float b = 0.0;
+            if (x == 0)
+            {
+                r = 1.0;
+                g = y;
+                b = 0.0;
+            }
+            else if (x == 1)
+            {
+                r = 1.0 - y;
+                g = 1.0;
+                b = 0.0;
+            }
+            else if (x == 2)
+            {
+                r = 0.0;
+                g = 1.0;
+                b = y;
+            }
+            else if (x == 3)
+            {
+                r = 0.0;
+                g = 1.0 - y;
+                b = 1.0;
+            }
+            else if (x == 4)
+            {
+                r = 0.0;
+                g = 0.0;
+                b = 1.0;
+            }
+            return vec3(r, g, b);
+        }
 
         void main()
         {
@@ -51,6 +98,23 @@ var fragmentShaderText =
             //{
             //    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
             //}
+            vec3 c = fragColor;
+            //gl_FragColor = vec4(fragColor, 1.0);
+            //gl_FragColor = vec4(c.r > c.g && c.r > c.b ? c.r : 0.0, c.g > c.r && c.g > c.b ? c.g : 0.0, c.b > c.r && c.b > c.g ? c.b : 0.0, 1.0 );
+            gl_FragColor = vec4(getColor(height / maxHeight), 1.0);
+        }
+    `;
+
+var fragmentShaderText2 =
+    `
+        precision mediump float;
+
+        varying vec3 fragColor;
+
+        varying vec4 position;
+
+        void main()
+        {
             gl_FragColor = vec4(fragColor, 1.0);
         }
     `;
@@ -148,10 +212,12 @@ function InitDemo() {
     //gl.lineWidth(5);
 
     var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    var fragmentShader1 = gl.createShader(gl.FRAGMENT_SHADER);
+    var fragmentShader2 = gl.createShader(gl.FRAGMENT_SHADER);
 
     gl.shaderSource(vertexShader, vertexShaderText);
-    gl.shaderSource(fragmentShader, fragmentShaderText);
+    gl.shaderSource(fragmentShader1, fragmentShaderText1);
+    gl.shaderSource(fragmentShader2, fragmentShaderText2);
 
     gl.compileShader(vertexShader);
     if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
@@ -159,23 +225,43 @@ function InitDemo() {
         return;
     }
 
-    gl.compileShader(fragmentShader);
-    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error('ERROR compiling fragment shader!', gl.getShaderInfoLog(fragmentShader));
+    gl.compileShader(fragmentShader1);
+    if (!gl.getShaderParameter(fragmentShader1, gl.COMPILE_STATUS)) {
+        console.error('ERROR compiling fragment shader!', gl.getShaderInfoLog(fragmentShader1));
         return;
     }
 
-    var program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error('ERROR linking program!', gl.getProgramInfoLog(program));
+    gl.compileShader(fragmentShader2);
+    if (!gl.getShaderParameter(fragmentShader2, gl.COMPILE_STATUS)) {
+        console.error('ERROR compiling fragment shader!', gl.getShaderInfoLog(fragmentShader2));
         return;
     }
-    gl.validateProgram(program);
-    if (!gl.getProgramParameter(program, gl.VALIDATE_STATUS)) {
-        console.error('ERROR validating program!', gl.getProgramInfoLog(program));
+
+    var program1 = gl.createProgram();
+    gl.attachShader(program1, vertexShader);
+    gl.attachShader(program1, fragmentShader1);
+    gl.linkProgram(program1);
+    if (!gl.getProgramParameter(program1, gl.LINK_STATUS)) {
+        console.error('ERROR linking program!', gl.getProgramInfoLog(program1));
+        return;
+    }
+    gl.validateProgram(program1);
+    if (!gl.getProgramParameter(program1, gl.VALIDATE_STATUS)) {
+        console.error('ERROR validating program!', gl.getProgramInfoLog(program1));
+        return;
+    }
+
+    var program2 = gl.createProgram();
+    gl.attachShader(program2, vertexShader);
+    gl.attachShader(program2, fragmentShader2);
+    gl.linkProgram(program2);
+    if (!gl.getProgramParameter(program2, gl.LINK_STATUS)) {
+        console.error('ERROR linking program!', gl.getProgramInfoLog(program2));
+        return;
+    }
+    gl.validateProgram(program2);
+    if (!gl.getProgramParameter(program2, gl.VALIDATE_STATUS)) {
+        console.error('ERROR validating program!', gl.getProgramInfoLog(program2));
         return;
     }
 
@@ -198,7 +284,7 @@ function InitDemo() {
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
-            var tmpHeight = 2 * Math.random();
+            var tmpHeight = Math.random();
             var tmpRed = 0.0;
             var tmpGreen = 0.0;
             var tmpBlue = 0.0;
@@ -381,10 +467,10 @@ function InitDemo() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, boxIndexBufferObject);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(boxIndices), gl.STATIC_DRAW);
 
-    var positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');//name from shader program
-    var colorAttribLocation = gl.getAttribLocation(program, 'vertColor');//name from shader program
+    var positionAttribLocation1 = gl.getAttribLocation(program1, 'vertPosition');//name from shader program
+    var colorAttribLocation1 = gl.getAttribLocation(program1, 'vertColor');//name from shader program
     gl.vertexAttribPointer(
-        positionAttribLocation, //Attribute location
+        positionAttribLocation1, //Attribute location
         3, //number of elements per attribute
         gl.FLOAT, //type of elements
         gl.FALSE, //normalize
@@ -392,7 +478,7 @@ function InitDemo() {
         0 //offset from the beginning of a single vertex to this attribute
     );
     gl.vertexAttribPointer(
-        colorAttribLocation, //Attribute location
+        colorAttribLocation1, //Attribute location
         3, //number of elements per attribute
         gl.FLOAT, //type of elements
         gl.FALSE, //normalize
@@ -400,16 +486,46 @@ function InitDemo() {
         3 * Float32Array.BYTES_PER_ELEMENT //offset from the beginning of a single vertex to this attribute
     );
 
-    gl.enableVertexAttribArray(positionAttribLocation);
-    gl.enableVertexAttribArray(colorAttribLocation);
+    gl.enableVertexAttribArray(positionAttribLocation1);
+    gl.enableVertexAttribArray(colorAttribLocation1);
+
+    var positionAttribLocation2 = gl.getAttribLocation(program2, 'vertPosition');//name from shader program
+    var colorAttribLocation2 = gl.getAttribLocation(program2, 'vertColor');//name from shader program
+    gl.vertexAttribPointer(
+        positionAttribLocation2, //Attribute location
+        3, //number of elements per attribute
+        gl.FLOAT, //type of elements
+        gl.FALSE, //normalize
+        6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+        0 //offset from the beginning of a single vertex to this attribute
+    );
+    gl.vertexAttribPointer(
+        colorAttribLocation2, //Attribute location
+        3, //number of elements per attribute
+        gl.FLOAT, //type of elements
+        gl.FALSE, //normalize
+        6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+        3 * Float32Array.BYTES_PER_ELEMENT //offset from the beginning of a single vertex to this attribute
+    );
+
+    gl.enableVertexAttribArray(positionAttribLocation2);
+    gl.enableVertexAttribArray(colorAttribLocation2);
 
     //tell opengl state machine which program should be active
-    gl.useProgram(program);
+    //gl.useProgram(program1);
     //gl.viewport(0, 0, canvas.width, canvas.height);
 
-    var matModelUniformLocation = gl.getUniformLocation(program, 'mModel');
-    var matViewUniformLocation = gl.getUniformLocation(program, 'mView');
-    var matProjUniformLocation = gl.getUniformLocation(program, 'mProj');
+    gl.useProgram(program1);
+
+    var matModelUniformLocation1 = gl.getUniformLocation(program1, 'mModel');
+    var matViewUniformLocation1 = gl.getUniformLocation(program1, 'mView');
+    var matProjUniformLocation1 = gl.getUniformLocation(program1, 'mProj');
+
+    gl.useProgram(program2);
+
+    var matModelUniformLocation2 = gl.getUniformLocation(program2, 'mModel');
+    var matViewUniformLocation2 = gl.getUniformLocation(program2, 'mView');
+    var matProjUniformLocation2 = gl.getUniformLocation(program2, 'mProj');
 
     var modelMatrix = new Float32Array(16); // model(world)
     var viewMatrix = new Float32Array(16); // position(location and orientation) of camera
@@ -446,8 +562,18 @@ function InitDemo() {
     }
 
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+    //gl.useProgram(program1);
     gl.vertexAttribPointer(
-        positionAttribLocation, //Attribute location
+        positionAttribLocation1, //Attribute location
+        3, //number of elements per attribute
+        gl.FLOAT, //type of elements
+        gl.FALSE, //normalize
+        6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+        0 //offset from the beginning of a single vertex to this attribute
+    );//important2
+    //gl.useProgram(program2);
+    gl.vertexAttribPointer(
+        positionAttribLocation2, //Attribute location
         3, //number of elements per attribute
         gl.FLOAT, //type of elements
         gl.FALSE, //normalize
@@ -463,15 +589,18 @@ function InitDemo() {
     var aspectRatio = canvas.clientWidth / canvas.clientHeight;
     var borderWidth = 0.2;
 
-    var aspectRationUniformLocation = gl.getUniformLocation(program, 'aspect');
-    var borderWidthUniformLocation = gl.getUniformLocation(program, 'border_width');
-    var widthUniformLocation = gl.getUniformLocation(program, 'width');
-    var heightUniformLocation = gl.getUniformLocation(program, 'height');
+    //var aspectRationUniformLocation = gl.getUniformLocation(program, 'aspect');
+    //var borderWidthUniformLocation = gl.getUniformLocation(program, 'border_width');
+    //var widthUniformLocation = gl.getUniformLocation(program, 'width');
+    //var heightUniformLocation = gl.getUniformLocation(program, 'height');
+    gl.useProgram(program1);
+    var maxHeightUniformLocation = gl.getUniformLocation(program1, 'maxHeight');
 
-    gl.uniform1f(aspectRationUniformLocation, aspectRatio);
-    gl.uniform1f(borderWidthUniformLocation, borderWidth);
-    gl.uniform1f(widthUniformLocation, canvas.clientWidth);
-    gl.uniform1f(heightUniformLocation, canvas.clientHeight);
+    //gl.uniform1f(aspectRationUniformLocation, aspectRatio);
+    //gl.uniform1f(borderWidthUniformLocation, borderWidth);
+    //gl.uniform1f(widthUniformLocation, canvas.clientWidth);
+    //gl.uniform1f(heightUniformLocation, canvas.clientHeight);
+    gl.uniform1f(maxHeightUniformLocation, MODEL_SCALE);
 
     glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
     //console.log(viewMatrix);
@@ -479,9 +608,17 @@ function InitDemo() {
     glMatrix.mat4.identity(projMatrix);
     glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(90), aspectRatio, 0.1, 200.0);
 
-    gl.uniformMatrix4fv(matModelUniformLocation, gl.FALSE, modelMatrix);
-    gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
-    gl.uniformMatrix4fv(matProjUniformLocation, gl.FALSE, projMatrix);
+
+
+    gl.uniformMatrix4fv(matModelUniformLocation1, gl.FALSE, modelMatrix);
+    gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+    gl.uniformMatrix4fv(matProjUniformLocation1, gl.FALSE, projMatrix);
+
+    gl.useProgram(program2);
+
+    gl.uniformMatrix4fv(matModelUniformLocation2, gl.FALSE, modelMatrix);
+    gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+    gl.uniformMatrix4fv(matProjUniformLocation2, gl.FALSE, projMatrix);
 
     var TranslateRotateRotateTranslate = function (camera, target, yaw, pitch) {
         var translateForward = glMatrix.mat4.create();
@@ -679,7 +816,7 @@ function InitDemo() {
 
     var drawContext = function (path, pos) {
         ctx.resetTransform();
-        console.log(pos);
+        //console.log(pos);
         ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height);
         ctx.scale(contextScale, -contextScale);
         //ctx.scale(contextScale, contextScale);
@@ -783,7 +920,10 @@ function InitDemo() {
                 //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
                 break;
             case 'a':
                 //console.log('a');
@@ -794,7 +934,10 @@ function InitDemo() {
                 //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, cameraSpeed);
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
                 break;
             case 's':
                 //console.log('s');
@@ -805,7 +948,10 @@ function InitDemo() {
                 //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, -cameraSpeed);
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
                 break;
             case 'd':
                 //console.log('d');
@@ -818,7 +964,10 @@ function InitDemo() {
                 //console.log(targetPosition); w
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
                 break;
             case ' ':
                 //console.log('space');
@@ -826,7 +975,10 @@ function InitDemo() {
                 targetPosition[1] += cameraSpeed;
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
                 break;
             case 'Shift':
                 //console.log('shift');
@@ -834,7 +986,10 @@ function InitDemo() {
                 targetPosition[1] -= cameraSpeed;
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
                 break;
             case 'ArrowUp':
                 //var t = roverTargetPosition.map((num, idx) => 2 * num - roverPosition[idx]);
@@ -885,7 +1040,15 @@ function InitDemo() {
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
-                    positionAttribLocation, //Attribute location
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
                     3, //number of elements per attribute
                     gl.FLOAT, //type of elements
                     gl.FALSE, //normalize
@@ -952,7 +1115,15 @@ function InitDemo() {
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
-                    positionAttribLocation, //Attribute location
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
                     3, //number of elements per attribute
                     gl.FLOAT, //type of elements
                     gl.FALSE, //normalize
@@ -1000,7 +1171,15 @@ function InitDemo() {
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
-                    positionAttribLocation, //Attribute location
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
                     3, //number of elements per attribute
                     gl.FLOAT, //type of elements
                     gl.FALSE, //normalize
@@ -1046,7 +1225,15 @@ function InitDemo() {
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
-                    positionAttribLocation, //Attribute location
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
                     3, //number of elements per attribute
                     gl.FLOAT, //type of elements
                     gl.FALSE, //normalize
@@ -1233,7 +1420,10 @@ function InitDemo() {
 
         //viewMatrix = glMatrix.mat4.create();
         glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-        gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+        gl.useProgram(program1);
+        gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+        gl.useProgram(program2);
+        gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
 
         //event.preventDefault();
     }
@@ -1260,7 +1450,15 @@ function InitDemo() {
             //}
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
             gl.vertexAttribPointer(
-                positionAttribLocation, //Attribute location
+                positionAttribLocation1, //Attribute location
+                3, //number of elements per attribute
+                gl.FLOAT, //type of elements
+                gl.FALSE, //normalize
+                6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                0 //offset from the beginning of a single vertex to this attribute
+            );//important2
+            gl.vertexAttribPointer(
+                positionAttribLocation2, //Attribute location
                 3, //number of elements per attribute
                 gl.FLOAT, //type of elements
                 gl.FALSE, //normalize
@@ -1596,7 +1794,9 @@ i_3: ${i_3} j_3: ${j_3}`;
         //gl.useProgram(program);
         //check
 
+        gl.useProgram(program1);
         gl.drawElements(gl.TRIANGLES, trianglesLength, gl.UNSIGNED_SHORT, 0);
+        gl.useProgram(program2);
         gl.drawElements(gl.LINES, linesLength, gl.UNSIGNED_SHORT, trianglesLength * 2);
         gl.drawElements(gl.TRIANGLES, roverLength, gl.UNSIGNED_SHORT, trianglesLength * 2 + linesLength * 2);
         gl.drawElements(gl.LINES, roverLinesLength, gl.UNSIGNED_SHORT, trianglesLength * 2 + linesLength * 2 + roverLength * 2);

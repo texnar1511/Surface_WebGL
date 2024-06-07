@@ -34,6 +34,7 @@ var fragmentShaderText1 =
         //uniform float width;
         //uniform float height;
         uniform float maxHeight;
+        uniform float minHeight;
 
         varying float height;
 
@@ -101,7 +102,7 @@ var fragmentShaderText1 =
             vec3 c = fragColor;
             //gl_FragColor = vec4(fragColor, 1.0);
             //gl_FragColor = vec4(c.r > c.g && c.r > c.b ? c.r : 0.0, c.g > c.r && c.g > c.b ? c.g : 0.0, c.b > c.r && c.b > c.g ? c.b : 0.0, 1.0 );
-            gl_FragColor = vec4(getColor(height / maxHeight), 1.0);
+            gl_FragColor = vec4(getColor((height - minHeight) / (maxHeight - minHeight)), 1.0);
         }
     `;
 
@@ -281,30 +282,38 @@ function InitDemo() {
     var fieldWidth = 20;//20;
     var fieldHeight = 20;//20;
 
+    var maxHeight = -Infinity;
+    var minHeight = Infinity;
+
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
             var tmpHeight = Math.random();
+            maxHeight = Math.max(maxHeight, tmpHeight * MODEL_SCALE);
+            minHeight = Math.min(minHeight, tmpHeight * MODEL_SCALE);
+            //var tmpRed = Math.random();
+            //var tmpGreen = Math.random();
+            //var tmpBlue = Math.random();
             var tmpRed = 0.0;
-            var tmpGreen = 0.0;
+            var tmpGreen = 1.0;
             var tmpBlue = 0.0;
-            //console.log(tmpHeight);
-            if (blueHeight <= tmpHeight && tmpHeight <= greenHeight) {
-                tmpRed = 0.0;
-                tmpGreen = (tmpHeight - blueHeight) / (greenHeight - blueHeight);
-                tmpBlue = 1 - (tmpHeight - blueHeight) / (greenHeight - blueHeight);
-            }
-            if (greenHeight <= tmpHeight && tmpHeight <= redHeight) {
-                tmpRed = (tmpHeight - greenHeight) / (redHeight - greenHeight);
-                tmpGreen = 1 - (tmpHeight - greenHeight) / (redHeight - greenHeight);
-                tmpBlue = 0.0;
-            }
-            if (tmpHeight < blueHeight) {
-                tmpBlue = 1.0;
-            }
-            if (redHeight < tmpHeight) {
-                tmpRed = 1.0;
-            }
+            ////console.log(tmpHeight);
+            //if (blueHeight <= tmpHeight && tmpHeight <= greenHeight) {
+            //    tmpRed = 0.0;
+            //    tmpGreen = (tmpHeight - blueHeight) / (greenHeight - blueHeight);
+            //    tmpBlue = 1 - (tmpHeight - blueHeight) / (greenHeight - blueHeight);
+            //}
+            //if (greenHeight <= tmpHeight && tmpHeight <= redHeight) {
+            //    tmpRed = (tmpHeight - greenHeight) / (redHeight - greenHeight);
+            //    tmpGreen = 1 - (tmpHeight - greenHeight) / (redHeight - greenHeight);
+            //    tmpBlue = 0.0;
+            //}
+            //if (tmpHeight < blueHeight) {
+            //    tmpBlue = 1.0;
+            //}
+            //if (redHeight < tmpHeight) {
+            //    tmpRed = 1.0;
+            //}
             //console.log(tmpRed, tmpGreen, tmpBlue);
             //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpHeight, tmpHeight, tmpHeight);
             boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpRed, tmpGreen, tmpBlue);
@@ -595,12 +604,14 @@ function InitDemo() {
     //var heightUniformLocation = gl.getUniformLocation(program, 'height');
     gl.useProgram(program1);
     var maxHeightUniformLocation = gl.getUniformLocation(program1, 'maxHeight');
+    var minHeightUniformLocation = gl.getUniformLocation(program1, 'minHeight');
 
     //gl.uniform1f(aspectRationUniformLocation, aspectRatio);
     //gl.uniform1f(borderWidthUniformLocation, borderWidth);
     //gl.uniform1f(widthUniformLocation, canvas.clientWidth);
     //gl.uniform1f(heightUniformLocation, canvas.clientHeight);
-    gl.uniform1f(maxHeightUniformLocation, MODEL_SCALE);
+    gl.uniform1f(maxHeightUniformLocation, maxHeight);
+    gl.uniform1f(minHeightUniformLocation, minHeight);
 
     glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
     //console.log(viewMatrix);
@@ -1433,10 +1444,29 @@ function InitDemo() {
             //console.log(event.movementY * dragSensitivity);
             boxVertices[changingPoint + 1] -= event.movementY * dragSensitivity;
             boxVertices[changingPoint + 6 * offset + 1] -= event.movementY * dragSensitivity;
+            //console.log(minHeight, maxHeight);
+            //maxHeight = Math.max(maxHeight, boxVertices[changingPoint + 1]);
+            //minHeight = Math.min(minHeight, boxVertices[changingPoint + 1]);
 
-            boxVertices[changingPoint + 3] = boxVertices[changingPoint + 1] / MODEL_SCALE;
-            boxVertices[changingPoint + 4] = boxVertices[changingPoint + 1] / MODEL_SCALE;
-            boxVertices[changingPoint + 5] = boxVertices[changingPoint + 1] / MODEL_SCALE;
+            //var tmpMaxHeight = -Infinity;
+            //var tmpMinHeight = Infinity;
+
+            maxHeight = -Infinity;
+            minHeight = Infinity;
+
+
+            for (var i = 0; i < fieldWidth * fieldHeight; i++) {
+                maxHeight = Math.max(maxHeight, boxVertices[6 * i + 1]);
+                minHeight = Math.min(minHeight, boxVertices[6 * i + 1]);
+            }
+
+            gl.useProgram(program1);
+            gl.uniform1f(maxHeightUniformLocation, maxHeight);
+            gl.uniform1f(minHeightUniformLocation, minHeight);
+
+            //boxVertices[changingPoint + 3] = boxVertices[changingPoint + 1] / MODEL_SCALE;
+            //boxVertices[changingPoint + 4] = boxVertices[changingPoint + 1] / MODEL_SCALE;
+            //boxVertices[changingPoint + 5] = boxVertices[changingPoint + 1] / MODEL_SCALE;
 
             //if (event.movementY >= 0) {
             //    boxVertices[changingPoint + 3] = Math.max(boxVertices[changingPoint + 3] - event.movementY * dragSensitivity / MODEL_SCALE, 0.0);
@@ -1711,7 +1741,9 @@ i: ${i} j: ${j}
 res_i: ${res_i.toFixed(3)} res_j: ${res_j.toFixed(3)}
 i_1: ${i_1} j_1: ${j_1}
 i_2: ${i_2} j_2: ${j_2}
-i_3: ${i_3} j_3: ${j_3}`;
+i_3: ${i_3} j_3: ${j_3}
+maxHeight: ${maxHeight.toFixed(3)}
+minHeight: ${minHeight.toFixed(3)}`;
         //box: ${ boxVertices[6 * fieldHeight * i + 6 * j].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 1].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 2].toFixed(3) }
 
         //console.log(text);

@@ -288,7 +288,7 @@ function InitDemo() {
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
-            var tmpHeight = Math.random();
+            var tmpHeight = 2 * Math.random();
             maxHeight = Math.max(maxHeight, tmpHeight * MODEL_SCALE);
             minHeight = Math.min(minHeight, tmpHeight * MODEL_SCALE);
             //var tmpRed = Math.random();
@@ -828,8 +828,15 @@ function InitDemo() {
     var drawContext = function (path, pos) {
         ctx.resetTransform();
         //console.log(pos);
-        ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height);
+        var pathH = path.map(x => x[1]);
+        ctx.translate(canvas2.width / 2, canvas2.height);
+        //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height);
+        //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height + (Math.max.apply(Math, pathH) + Math.min.apply(Math, pathH)) * contextScale / 2);
+        //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height - pos[1] * contextScale);
         ctx.scale(contextScale, -contextScale);
+        console.log(pos[1]);
+        console.log(canvas2.height);
+        ctx.translate(-pos[0], -pos[1] + canvas2.height / (2 * contextScale));
         //ctx.scale(contextScale, contextScale);
         //var b = -path[0][0];
         //var k = canvas2.width / (path[path.length - 1][0] - path[0][0]);
@@ -838,6 +845,7 @@ function InitDemo() {
         //ctx.translate(b, 0);
         ctx.lineWidth = 3 / contextScale;
         ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        //ctx.clearRect(0, 0, canvas2.width, canvas2.height);
         drawArray(path);
         ctx.strokeStyle = "#ff00ff";
         ctx.beginPath();

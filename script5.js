@@ -202,7 +202,7 @@ function InitDemo() {
     gl.enable(gl.DEPTH_TEST);
 
     gl.enable(gl.POLYGON_OFFSET_FILL);
-    gl.polygonOffset(2, 3);
+    //gl.polygonOffset(2, 3);
 
     //gl.depthRange(0.2, 0.8);
 
@@ -279,16 +279,64 @@ function InitDemo() {
 
     var boxVertices = [];
 
-    var fieldWidth = 20;//20;
-    var fieldHeight = 20;//20;
+    var fieldWidth = 50;//20;
+    var fieldHeight = 50;//20;
 
     var maxHeight = -Infinity;
     var minHeight = Infinity;
 
+    //var randomHeights = [];
+
+    //for (var i = 0; i < fieldWidth * fieldHeight; i++) {
+    //    randomHeights.push(20 * Math.random());
+    //}
+
+    //console.log(randomHeights);
+
+    var mod289 = function (v) {
+        return v.map(x => x - Math.floor(x * (1.0 / 289.0)) * 289.0);
+    }
+
+    var permute = function (v) {
+        return mod289(v.map(x => (x * 34.0 + 1.0) * x));
+    }
+
+    var noise = function (vx, vy) {
+        var C = [0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439];
+        var i = [Math.floor(vx + C[1] * (vx + vy)), Math.floor(vy + C[1] * (vx + vy))];
+        var x0 = [vx - i[0] + C[0] * (i[0] + i[1]), vy - i[1] + C[0] * (i[0] + i[1])];
+        var i1 = x0[0] > x0[1] ? [1.0, 0.0] : [0.0, 1.0];
+        var x1 = [x0[0] + C[0] - i1[0], x0[1] + C[0] - i1[1]];
+        var x2 = [x0[0] + C[2], x0[1] + C[2]];
+        i = mod289(i);
+        var p1 = permute([i[1], i[1] + i1[1], 1.0 + i[1]]);
+        var p = permute([p1[0] + i[0], p1[0] + i[0] + i1[0], p1[0] + i[0] + 1.0]);
+        var m = [Math.max(0.5 - x0[0] * x0[0] - x0[1] * x0[1], 0.0), Math.max(0.5 - x1[0] * x1[0] - x1[1] * x1[1], 0.0), Math.max(0.5 - x2[0] * x2[0] - x2[1] * x2[1], 0.0)];
+        m.map(x => x * x);
+        m.map(x => x * x);
+        var x = p.map(x => (x * C[3] - Math.floor(x * C[3])) * 2.0 - 1.0);
+        var h = x.map(x => Math.abs(x) - 0.5);
+        var ox = x.map(x => Math.floor(x + 0.5));
+        var a0 = x.map((x, idx) => x - ox[idx]);
+        m.map((x, idx) => x * (1.79284291400159 - 0.85373472095314 * (a0.map(x => x * x)[idx] + h.map(x => x * x)[idx])));
+        var g = [a0[0] * x0[0] + h[0] * x0[1], a0[1] * x1[0] + h[1] * x1[1], a0[2] * x2[0] + h[2] * x2[1]];
+        return 130.0 * (m[0] * g[0] + m[1] * g[1] + m[2] * g[2]);
+    }
+
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
-            var tmpHeight = 2 * Math.random();
+            //var tmpHeight = 2 * Math.random();
+            //var tmpHeight = (
+            //    (0 <= i * fieldHeight + j - 1 && i * fieldHeight + j - 1 < fieldWidth * fieldHeight) ? randomHeights[i * fieldHeight + j - 1] : 0.0 +
+            //        (0 <= i * fieldHeight + j + 1 && i * fieldHeight + j + 1 < fieldWidth * fieldHeight) ? randomHeights[i * fieldHeight + j + 1] : 0.0 +
+            //            (0 <= (i + 1) * fieldHeight + j - 1 + i % 2 && (i + 1) * fieldHeight + j - 1 + i % 2 < fieldWidth * fieldHeight) ? randomHeights[(i + 1) * fieldHeight + j - 1 + i % 2] : 0.0 +
+            //                (0 <= (i + 1) * fieldHeight + j + i % 2 && (i + 1) * fieldHeight + j + i % 2 < fieldWidth * fieldHeight) ? randomHeights[(i + 1) * fieldHeight + j + i % 2] : 0.0 +
+            //                    (0 <= (i - 1) * fieldHeight + j - 1 + i % 2 && (i - 1) * fieldHeight + j - 1 + i % 2 < fieldWidth * fieldHeight) ? randomHeights[(i - 1) * fieldHeight + j - 1 + i % 2] : 0.0 +
+            //                        (0 <= (i - 1) * fieldHeight + j + i % 2 && (i - 1) * fieldHeight + j + i % 2 < fieldWidth * fieldHeight) ? randomHeights[(i - 1) * fieldHeight + j + i % 2] : 0.0
+            //) / 6;
+            var tmpHeight = noise(i / fieldWidth - 0.5, j / fieldHeight - 0.5);
+            //console.log(tmpHeight);
             maxHeight = Math.max(maxHeight, tmpHeight * MODEL_SCALE);
             minHeight = Math.min(minHeight, tmpHeight * MODEL_SCALE);
             //var tmpRed = Math.random();
@@ -334,24 +382,45 @@ function InitDemo() {
         }
     }
 
+    var roverScale = 5.0;
+
     //cube rover
-    boxVertices.push(1, 0, 1, 1.0, 0.0, 1.0);
-    boxVertices.push(1, 0, -1, 1.0, 0.0, 1.0);
-    boxVertices.push(-1, 0, 1, 1.0, 0.0, 1.0);
-    boxVertices.push(-1, 0, -1, 1.0, 0.0, 1.0);
-    boxVertices.push(1, 2, 1, 1.0, 0.0, 1.0);
-    boxVertices.push(1, 2, -1, 1.0, 0.0, 1.0);
-    boxVertices.push(-1, 2, 1, 1.0, 0.0, 1.0);
-    boxVertices.push(-1, 2, -1, 1.0, 0.0, 1.0);
+    //boxVertices.push(1, 0, 1, 1.0, 0.0, 1.0);
+    //boxVertices.push(1, 0, -1, 1.0, 0.0, 1.0);
+    //boxVertices.push(-1, 0, 1, 1.0, 0.0, 1.0);
+    //boxVertices.push(-1, 0, -1, 1.0, 0.0, 1.0);
+    //boxVertices.push(1, 2, 1, 1.0, 0.0, 1.0);
+    //boxVertices.push(1, 2, -1, 1.0, 0.0, 1.0);
+    //boxVertices.push(-1, 2, 1, 1.0, 0.0, 1.0);
+    //boxVertices.push(-1, 2, -1, 1.0, 0.0, 1.0);
     //black lines
-    boxVertices.push(1, 0, 1, 0.0, 0.0, 0.0);
-    boxVertices.push(1, 0, -1, 0.0, 0.0, 0.0);
-    boxVertices.push(-1, 0, 1, 0.0, 0.0, 0.0);
-    boxVertices.push(-1, 0, -1, 0.0, 0.0, 0.0);
-    boxVertices.push(1, 2, 1, 0.0, 0.0, 0.0);
-    boxVertices.push(1, 2, -1, 0.0, 0.0, 0.0);
-    boxVertices.push(-1, 2, 1, 0.0, 0.0, 0.0);
-    boxVertices.push(-1, 2, -1, 0.0, 0.0, 0.0);
+    //boxVertices.push(1, 0, 1, 0.0, 0.0, 0.0);
+    //boxVertices.push(1, 0, -1, 0.0, 0.0, 0.0);
+    //boxVertices.push(-1, 0, 1, 0.0, 0.0, 0.0);
+    //boxVertices.push(-1, 0, -1, 0.0, 0.0, 0.0);
+    //boxVertices.push(1, 2, 1, 0.0, 0.0, 0.0);
+    //boxVertices.push(1, 2, -1, 0.0, 0.0, 0.0);
+    //boxVertices.push(-1, 2, 1, 0.0, 0.0, 0.0);
+    //boxVertices.push(-1, 2, -1, 0.0, 0.0, 0.0);
+
+    //cube rover
+    boxVertices.push(roverScale, 0, roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(roverScale, 0, -roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(-roverScale, 0, roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(-roverScale, 0, -roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(-roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 1.0);
+    //black lines
+    boxVertices.push(roverScale, 0, roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(roverScale, 0, -roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(-roverScale, 0, roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(-roverScale, 0, -roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(roverScale, 2 * roverScale, roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(-roverScale, 2 * roverScale, roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 0.0);
 
     //console.log(boxVertices.slice(0, fieldWidth * fieldHeight * 6));
 
@@ -544,7 +613,7 @@ function InitDemo() {
     //console.log(modelMatrix);
     glMatrix.mat4.identity(viewMatrix);
     var cameraPosition = [0, 2, 0];
-    var cameraSpeed = 1.0;
+    var cameraSpeed = 2.0;
     var cameraRho = 1;
     var cameraYaw = 0.0;
     var cameraPitch = 0.0;
@@ -561,6 +630,8 @@ function InitDemo() {
 
     var changingPoint = -1;
     var dragSensitivity = 0.05;
+
+    var rover = new Rover(1, 2);
 
     //console.log(boxVertices[1]);
     var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
@@ -592,7 +663,7 @@ function InitDemo() {
 
     //console.log(roverPosition);
     //console.log(roverTargetPosition);
-    var roverSpeed = 0.5;
+    var roverSpeed = 2.0;
     var roverSensitivity = 0.2;
 
     var aspectRatio = canvas.clientWidth / canvas.clientHeight;
@@ -617,7 +688,7 @@ function InitDemo() {
     //console.log(viewMatrix);
     //glMatrix.mat4.identity(viewMatrix);
     glMatrix.mat4.identity(projMatrix);
-    glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(90), aspectRatio, 0.1, 200.0);
+    glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(90), aspectRatio, 0.1, 1000.0);
 
 
 
@@ -755,7 +826,7 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var ticks = 40;
+        var ticks = 60;
 
         var startX = rovPos[0] - ticks * rovSpd * forward[0];
         var startY = rovPos[2] - ticks * rovSpd * forward[2];
@@ -823,7 +894,7 @@ function InitDemo() {
         ctx.stroke();
     }
 
-    var contextScale = 10;
+    var contextScale = 5;
 
     var drawContext = function (path, pos) {
         ctx.resetTransform();
@@ -834,8 +905,8 @@ function InitDemo() {
         //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height + (Math.max.apply(Math, pathH) + Math.min.apply(Math, pathH)) * contextScale / 2);
         //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height - pos[1] * contextScale);
         ctx.scale(contextScale, -contextScale);
-        console.log(pos[1]);
-        console.log(canvas2.height);
+        //console.log(pos[1]);
+        //console.log(canvas2.height);
         ctx.translate(-pos[0], -pos[1] + canvas2.height / (2 * contextScale));
         //ctx.scale(contextScale, contextScale);
         //var b = -path[0][0];
@@ -850,7 +921,7 @@ function InitDemo() {
         ctx.strokeStyle = "#ff00ff";
         ctx.beginPath();
         ctx.moveTo(pos[0], pos[1]);
-        ctx.lineTo(pos[0], pos[1] + 3);
+        ctx.lineTo(pos[0], pos[1] + contextScale);
         ctx.stroke();
         ctx.strokeStyle = "#000000";
     }

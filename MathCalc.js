@@ -14,17 +14,51 @@
 
     var Point2D = class {
 
-        constructor(x, y) {
+        constructor(x = 0, y = 0) {
             this.x = x;
             this.y = y;
         }
 
-        calcNorm() {
+        norm() {
             return Math.sqrt(this.x * this.x + this.y * this.y);
         }
 
-        get norm() {
-            return this.calcNorm();
+        add(p) {
+            return new Point2D(this.x + p.x, this.y + p.y);
+        }
+
+        sub(p) {
+            return new Point2D(this.x - p.x, this.y - p.y);
+        }
+
+        neg() {
+            return new Point2D(-this.x, -this.y);
+        }
+
+    }
+
+    var Point3D = class {
+
+        constructor(x = 0, y = 0, z = 0) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        norm() {
+            return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+        }
+
+        add(p) {
+            return new Point2D(this.x + p.x, this.y + p.y, this.z + p.z);
+        }
+
+        sub(p) {
+            return new Point2D(this.x - p.x, this.y - p.y, this.z - p.z);
+        }
+
+        neg() {
+            return new Point2D(-this.x, -this.y, -this.z);
         }
 
     }
@@ -109,6 +143,8 @@
     exports.shift = shift;
     exports.rotate = rotate;
     exports.shiftRotateShift = shiftRotateShift;
+    //exports.Point2D = Point2D;
+    //exports.Point3D = Point3D;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 

@@ -323,6 +323,28 @@ function InitDemo() {
         return 130.0 * (m[0] * g[0] + m[1] * g[1] + m[2] * g[2]);
     }
 
+    var bilinearInterpolation = function (x, y, f00, f01, f10, f11) {
+        return f00 * (1 - x) * (1 - y) + f01 * (1 - x) * y + f10 * x * (1 - y) + f11 * x * y;
+    }
+
+    var perlinTick = 7;
+
+    var randomHeights = [];
+
+    var widthRH = Math.floor((fieldWidth - 1) * SQRT32 / perlinTick) + 2;
+    var heightRH = Math.floor((fieldHeight - 0.5) / perlinTick) + 2;
+
+    for (var i = 0; i < widthRH; i++) {
+        for (var j = 0; j < heightRH; j++) {
+            //console.log(i * SQRT32 * perlinTick, (j + (i % 2) / 2) * perlinTick);
+            //console.log(i * perlinTick, j * perlinTick);
+            randomHeights.push(MODEL_SCALE * Math.random());
+        }
+    }
+
+    //console.log(widthRH, heightRH);
+    //console.log(randomHeights);
+
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
@@ -335,8 +357,29 @@ function InitDemo() {
             //                    (0 <= (i - 1) * fieldHeight + j - 1 + i % 2 && (i - 1) * fieldHeight + j - 1 + i % 2 < fieldWidth * fieldHeight) ? randomHeights[(i - 1) * fieldHeight + j - 1 + i % 2] : 0.0 +
             //                        (0 <= (i - 1) * fieldHeight + j + i % 2 && (i - 1) * fieldHeight + j + i % 2 < fieldWidth * fieldHeight) ? randomHeights[(i - 1) * fieldHeight + j + i % 2] : 0.0
             //) / 6;
-            var tmpHeight = noise(i / fieldWidth - 0.5, j / fieldHeight - 0.5);
+            //console.log(i * SQRT32, j + (i % 2) / 2);
+            //console.log(Math.floor(i * SQRT32 / perlinTick), Math.floor((j + (i % 2) / 2) / perlinTick));
+            //console.log(randomHeights[Math.floor(i * SQRT32 / perlinTick) * heightRH + Math.floor((j + (i % 2) / 2) / perlinTick)]);
+            //var tmpHeight = noise(i / fieldWidth - 0.5, j / fieldHeight - 0.5);
             //console.log(tmpHeight);
+
+            var interI = Math.floor(i * SQRT32 / perlinTick);
+            var interJ = Math.floor((j + (i % 2) / 2) / perlinTick);
+            //console.log(i * SQRT32 / perlinTick - interI, (j + (i % 2) / 2) / perlinTick - interJ);
+            //console.log(interI, interJ, interI + 1, interJ + 1);
+
+            var tmpHeight = bilinearInterpolation(
+                i * SQRT32 / perlinTick - interI,
+                (j + (i % 2) / 2) / perlinTick - interJ,
+                randomHeights[interI * heightRH + interJ],
+                randomHeights[interI * heightRH + interJ + 1],
+                randomHeights[(interI + 1) * heightRH + interJ],
+                randomHeights[(interI + 1) * heightRH + interJ + 1],
+            );
+
+            console.log(tmpHeight);
+
+
             maxHeight = Math.max(maxHeight, tmpHeight * MODEL_SCALE);
             minHeight = Math.min(minHeight, tmpHeight * MODEL_SCALE);
             //var tmpRed = Math.random();
@@ -613,7 +656,7 @@ function InitDemo() {
     //console.log(modelMatrix);
     glMatrix.mat4.identity(viewMatrix);
     var cameraPosition = [0, 2, 0];
-    var cameraSpeed = 2.0;
+    var cameraSpeed = 10.0;
     var cameraRho = 1;
     var cameraYaw = 0.0;
     var cameraPitch = 0.0;
@@ -894,7 +937,7 @@ function InitDemo() {
         ctx.stroke();
     }
 
-    var contextScale = 5;
+    var contextScale = 4;
 
     var drawContext = function (path, pos) {
         ctx.resetTransform();
@@ -921,7 +964,7 @@ function InitDemo() {
         ctx.strokeStyle = "#ff00ff";
         ctx.beginPath();
         ctx.moveTo(pos[0], pos[1]);
-        ctx.lineTo(pos[0], pos[1] + contextScale);
+        ctx.lineTo(pos[0], pos[1] + 2 * contextScale);
         ctx.stroke();
         ctx.strokeStyle = "#000000";
     }

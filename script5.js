@@ -202,7 +202,7 @@ function InitDemo() {
     gl.enable(gl.DEPTH_TEST);
 
     gl.enable(gl.POLYGON_OFFSET_FILL);
-    //gl.polygonOffset(2, 3);
+    //gl.polygonOffset(-1, 0);
 
     //gl.depthRange(0.2, 0.8);
 
@@ -279,8 +279,8 @@ function InitDemo() {
 
     var boxVertices = [];
 
-    var fieldWidth = 50;//20;
-    var fieldHeight = 50;//20;
+    var fieldWidth = 100;//20;
+    var fieldHeight = 100;//20;
 
     var maxHeight = -Infinity;
     var minHeight = Infinity;
@@ -327,6 +327,20 @@ function InitDemo() {
         return f00 * (1 - x) * (1 - y) + f01 * (1 - x) * y + f10 * x * (1 - y) + f11 * x * y;
     }
 
+    var smooth = function (x) {
+        return x * x * (3 - 2 * x);
+    }
+
+    var smoother = function (x) {
+        return x * x * x * (6 * x * x - 15 * x + 10);
+    }
+
+    var smoothInterpolation = function (x, y, f00, f01, f10, f11) {
+        var u = smooth(x); //smoother
+        var v = smooth(y); //smoother
+        return f00 * (1 - u) + f10 * u + (f01 - f00) * v * (1 - u) + (f11 - f10) * u * v;
+    }
+
     var perlinTick = 7;
 
     var randomHeights = [];
@@ -368,7 +382,7 @@ function InitDemo() {
             //console.log(i * SQRT32 / perlinTick - interI, (j + (i % 2) / 2) / perlinTick - interJ);
             //console.log(interI, interJ, interI + 1, interJ + 1);
 
-            var tmpHeight = bilinearInterpolation(
+            var tmpHeight = bilinearInterpolation( // bilinear or smooth
                 i * SQRT32 / perlinTick - interI,
                 (j + (i % 2) / 2) / perlinTick - interJ,
                 randomHeights[interI * heightRH + interJ],
@@ -377,7 +391,7 @@ function InitDemo() {
                 randomHeights[(interI + 1) * heightRH + interJ + 1],
             );
 
-            console.log(tmpHeight);
+            //console.log(tmpHeight);
 
 
             maxHeight = Math.max(maxHeight, tmpHeight * MODEL_SCALE);
@@ -958,7 +972,8 @@ function InitDemo() {
         //ctx.scale(k, 1);
         //ctx.translate(b, 0);
         ctx.lineWidth = 3 / contextScale;
-        ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        //ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        ctx.clearRect(pos[0] - canvas2.width, pos[1] - canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
         //ctx.clearRect(0, 0, canvas2.width, canvas2.height);
         drawArray(path);
         ctx.strokeStyle = "#ff00ff";

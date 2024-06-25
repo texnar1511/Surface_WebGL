@@ -382,7 +382,7 @@ function InitDemo() {
             //console.log(i * SQRT32 / perlinTick - interI, (j + (i % 2) / 2) / perlinTick - interJ);
             //console.log(interI, interJ, interI + 1, interJ + 1);
 
-            var tmpHeight = bilinearInterpolation( // bilinear or smooth
+            var tmpHeight = smoothInterpolation( // bilinear or smooth
                 i * SQRT32 / perlinTick - interI,
                 (j + (i % 2) / 2) / perlinTick - interJ,
                 randomHeights[interI * heightRH + interJ],
@@ -461,13 +461,43 @@ function InitDemo() {
     //boxVertices.push(-1, 2, -1, 0.0, 0.0, 0.0);
 
     //cube rover
-    boxVertices.push(roverScale, 0, roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(roverScale, 0, roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(roverScale, 0, -roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(-roverScale, 0, roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(-roverScale, 0, -roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(-roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 1.0);
+    //boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 1.0);
+    //down
+    boxVertices.push(roverScale, 0, roverScale, 1.0, 1.0, 0.0);
+    boxVertices.push(roverScale, 0, -roverScale, 1.0, 1.0, 0.0);
+    boxVertices.push(-roverScale, 0, roverScale, 1.0, 1.0, 0.0);
+    boxVertices.push(-roverScale, 0, -roverScale, 1.0, 1.0, 0.0);
+    //up
+    boxVertices.push(roverScale, 2 * roverScale, roverScale, 0.0, 0.0, 1.0);
+    boxVertices.push(roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 1.0);
+    boxVertices.push(-roverScale, 2 * roverScale, roverScale, 0.0, 0.0, 1.0);
+    boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 1.0);
+    //front
+    boxVertices.push(roverScale, 0, roverScale, 1.0, 0.0, 0.0);
+    boxVertices.push(roverScale, 0, -roverScale, 1.0, 0.0, 0.0);
+    boxVertices.push(roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 0.0);
+    boxVertices.push(roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 0.0);
+    //back
+    boxVertices.push(-roverScale, 0, roverScale, 0.0, 1.0, 1.0);
+    boxVertices.push(-roverScale, 0, -roverScale, 0.0, 1.0, 1.0);
+    boxVertices.push(-roverScale, 2 * roverScale, roverScale, 0.0, 1.0, 1.0);
+    boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 0.0, 1.0, 1.0);
+    //left
+    boxVertices.push(roverScale, 0, roverScale, 0.0, 1.0, 0.0);
+    boxVertices.push(-roverScale, 0, roverScale, 0.0, 1.0, 0.0);
+    boxVertices.push(roverScale, 2 * roverScale, roverScale, 0.0, 1.0, 0.0);
+    boxVertices.push(-roverScale, 2 * roverScale, roverScale, 0.0, 1.0, 0.0);
+    //right
     boxVertices.push(roverScale, 0, -roverScale, 1.0, 0.0, 1.0);
-    boxVertices.push(-roverScale, 0, roverScale, 1.0, 0.0, 1.0);
     boxVertices.push(-roverScale, 0, -roverScale, 1.0, 0.0, 1.0);
-    boxVertices.push(roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 1.0);
     boxVertices.push(roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 1.0);
-    boxVertices.push(-roverScale, 2 * roverScale, roverScale, 1.0, 0.0, 1.0);
     boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 1.0, 0.0, 1.0);
     //black lines
     boxVertices.push(roverScale, 0, roverScale, 0.0, 0.0, 0.0);
@@ -535,52 +565,59 @@ function InitDemo() {
 
     var linesLength = (fieldWidth - 1) * (fieldHeight - 1) * 10;
 
-    boxIndices.push(2 * offset, 2 * offset + 1, 2 * offset + 2);
-    boxIndices.push(2 * offset + 1, 2 * offset + 2, 2 * offset + 3);
-    boxIndices.push(2 * offset + 4, 2 * offset + 5, 2 * offset + 6);
-    boxIndices.push(2 * offset + 5, 2 * offset + 6, 2 * offset + 7);
+    for (var i = 0; i < 6; i++) {
+        boxIndices.push(2 * offset + 4 * i, 2 * offset + 4 * i + 1, 2 * offset + 4 * i + 2);
+        boxIndices.push(2 * offset + 4 * i + 1, 2 * offset + 4 * i + 2, 2 * offset + 4 * i + 3);
+    }
 
-    boxIndices.push(2 * offset, 2 * offset + 1, 2 * offset + 4);
-    boxIndices.push(2 * offset + 1, 2 * offset + 4, 2 * offset + 5);
-    boxIndices.push(2 * offset + 2, 2 * offset + 3, 2 * offset + 6);
-    boxIndices.push(2 * offset + 3, 2 * offset + 6, 2 * offset + 7);
+    //boxIndices.push(2 * offset, 2 * offset + 1, 2 * offset + 2);
+    //boxIndices.push(2 * offset + 1, 2 * offset + 2, 2 * offset + 3);
+    //boxIndices.push(2 * offset + 4, 2 * offset + 5, 2 * offset + 6);
+    //boxIndices.push(2 * offset + 5, 2 * offset + 6, 2 * offset + 7);
 
-    boxIndices.push(2 * offset, 2 * offset + 2, 2 * offset + 4);
-    boxIndices.push(2 * offset + 2, 2 * offset + 4, 2 * offset + 6);
-    boxIndices.push(2 * offset + 1, 2 * offset + 3, 2 * offset + 5);
-    boxIndices.push(2 * offset + 3, 2 * offset + 5, 2 * offset + 7);
+    //boxIndices.push(2 * offset, 2 * offset + 1, 2 * offset + 4);
+    //boxIndices.push(2 * offset + 1, 2 * offset + 4, 2 * offset + 5);
+    //boxIndices.push(2 * offset + 2, 2 * offset + 3, 2 * offset + 6);
+    //boxIndices.push(2 * offset + 3, 2 * offset + 6, 2 * offset + 7);
 
-    var roverLength = 3 * 12;
+    //boxIndices.push(2 * offset, 2 * offset + 2, 2 * offset + 4);
+    //boxIndices.push(2 * offset + 2, 2 * offset + 4, 2 * offset + 6);
+    //boxIndices.push(2 * offset + 1, 2 * offset + 3, 2 * offset + 5);
+    //boxIndices.push(2 * offset + 3, 2 * offset + 5, 2 * offset + 7);
 
-    boxIndices.push(2 * offset + 8, 2 * offset + 9);
-    boxIndices.push(2 * offset + 10, 2 * offset + 11);
-    boxIndices.push(2 * offset + 8, 2 * offset + 10);
-    boxIndices.push(2 * offset + 9, 2 * offset + 11);
+    //var roverLength = 3 * 4 * 3;
+    var roverLength = 6 * 2 * 3;
+    var roverOffset = 4 * 6;
 
-    boxIndices.push(2 * offset + 12, 2 * offset + 13);
-    boxIndices.push(2 * offset + 14, 2 * offset + 15);
-    boxIndices.push(2 * offset + 12, 2 * offset + 14);
-    boxIndices.push(2 * offset + 13, 2 * offset + 15);
+    boxIndices.push(2 * offset + roverOffset, 2 * offset + roverOffset + 1);
+    boxIndices.push(2 * offset + roverOffset + 2, 2 * offset + roverOffset + 3);
+    boxIndices.push(2 * offset + roverOffset, 2 * offset + roverOffset + 2);
+    boxIndices.push(2 * offset + roverOffset + 1, 2 * offset + roverOffset + 3);
 
-    boxIndices.push(2 * offset + 8, 2 * offset + 9);
-    boxIndices.push(2 * offset + 12, 2 * offset + 13);
-    boxIndices.push(2 * offset + 8, 2 * offset + 12);
-    boxIndices.push(2 * offset + 9, 2 * offset + 13);
+    boxIndices.push(2 * offset + roverOffset + 4, 2 * offset + roverOffset + 5);
+    boxIndices.push(2 * offset + roverOffset + 6, 2 * offset + roverOffset + 7);
+    boxIndices.push(2 * offset + roverOffset + 4, 2 * offset + roverOffset + 6);
+    boxIndices.push(2 * offset + roverOffset + 5, 2 * offset + roverOffset + 7);
 
-    boxIndices.push(2 * offset + 10, 2 * offset + 11);
-    boxIndices.push(2 * offset + 14, 2 * offset + 15);
-    boxIndices.push(2 * offset + 10, 2 * offset + 14);
-    boxIndices.push(2 * offset + 11, 2 * offset + 15);
+    boxIndices.push(2 * offset + roverOffset, 2 * offset + roverOffset + 1);
+    boxIndices.push(2 * offset + roverOffset + 4, 2 * offset + roverOffset + 5);
+    boxIndices.push(2 * offset + roverOffset, 2 * offset + roverOffset + 4);
+    boxIndices.push(2 * offset + roverOffset + 1, 2 * offset + roverOffset + 5);
 
-    boxIndices.push(2 * offset + 8, 2 * offset + 10);
-    boxIndices.push(2 * offset + 12, 2 * offset + 14);
-    boxIndices.push(2 * offset + 8, 2 * offset + 12);
-    boxIndices.push(2 * offset + 10, 2 * offset + 14);
+    boxIndices.push(2 * offset + roverOffset + 2, 2 * offset + roverOffset + 3);
+    boxIndices.push(2 * offset + roverOffset + 6, 2 * offset + roverOffset + 7);
+    boxIndices.push(2 * offset + roverOffset + 2, 2 * offset + roverOffset + 6);
+    boxIndices.push(2 * offset + roverOffset + 3, 2 * offset + roverOffset + 7);
 
-    boxIndices.push(2 * offset + 9, 2 * offset + 11);
-    boxIndices.push(2 * offset + 13, 2 * offset + 15);
-    boxIndices.push(2 * offset + 9, 2 * offset + 13);
-    boxIndices.push(2 * offset + 11, 2 * offset + 15);
+    boxIndices.push(2 * offset + roverOffset, 2 * offset + roverOffset + 2);
+    boxIndices.push(2 * offset + roverOffset + 4, 2 * offset + roverOffset + 6);
+    boxIndices.push(2 * offset + roverOffset, 2 * offset + roverOffset + 4);
+    boxIndices.push(2 * offset + roverOffset + 2, 2 * offset + roverOffset + 6);
+
+    boxIndices.push(2 * offset + roverOffset + 1, 2 * offset + roverOffset + 3);
+    boxIndices.push(2 * offset + roverOffset + 5, 2 * offset + roverOffset + 7);
+    boxIndices.push(2 * offset + roverOffset + 1, 2 * offset + roverOffset + 5);
+    boxIndices.push(2 * offset + roverOffset + 3, 2 * offset + roverOffset + 7);
 
     var roverLinesLength = 2 * 24;
 
@@ -694,7 +731,7 @@ function InitDemo() {
     var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
     var roverTargetPosition = [boxVertices[0], boxVertices[1], boxVertices[2] + 1];
 
-    for (var i = 0; i < 16; i++) {
+    for (var i = 0; i < 32; i++) {
         boxVertices[2 * 6 * offset + 6 * i + 1] += boxVertices[1];
     }
 
@@ -1171,7 +1208,7 @@ function InitDemo() {
                 //console.log(r);
                 //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, roverSpeed);
 
-                for (var i = 0; i < 16; i++) {
+                for (var i = 0; i < 32; i++) {
                     boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
                     boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
                     boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
@@ -1235,7 +1272,7 @@ function InitDemo() {
                 roverPosition = [f[0], h, f[2]];
                 roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
 
-                for (var i = 0; i < 16; i++) {
+                for (var i = 0; i < 32; i++) {
                     //boxVertices[offset * 6 * 2 + 6 * i] += roverPosition[0] - r[0];
                     //boxVertices[offset * 6 * 2 + 6 * i + 2] += roverPosition[2] - r[2];
                     boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
@@ -1289,7 +1326,7 @@ function InitDemo() {
                 roverTargetPosition[0] = res_1[0];
                 roverTargetPosition[2] = res_1[1];
 
-                for (var i = 0; i < 16; i++) {
+                for (var i = 0; i < 32; i++) {
                     //var x = boxVertices[offset * 6 * 2 + 6 * i];
                     //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
                     var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
@@ -1343,7 +1380,7 @@ function InitDemo() {
                 roverTargetPosition[0] = res_1[0];
                 roverTargetPosition[2] = res_1[1];
 
-                for (var i = 0; i < 16; i++) {
+                for (var i = 0; i < 32; i++) {
                     var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
                     boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
                     boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];

@@ -202,7 +202,11 @@ function InitDemo() {
     gl.enable(gl.DEPTH_TEST);
 
     gl.enable(gl.POLYGON_OFFSET_FILL);
-    //gl.polygonOffset(-1, 0);
+    gl.polygonOffset(-1, 0);
+
+
+    var roverMode = false;
+    var roverCameraShift = 4;
 
     //gl.depthRange(0.2, 0.8);
 
@@ -1462,6 +1466,365 @@ function InitDemo() {
 
     }
 
+    var onKeyDownRoverMode = function (event) {
+        //console.log(event.key);
+
+        //event.preventDefault();
+        //console.log(event.key);
+
+        switch (event.key) {
+            case 'w':
+                //console.log('w');
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
+                //console.log(c);
+                cameraPosition = mathCalc.findPointOnSegment(cameraPosition, targetPosition, cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //console.log(c);
+                //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, cameraSpeed);
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+                break;
+            case 'a':
+                //console.log('a');
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
+                cameraPosition = mathCalc.findPointOnOrtSegment(cameraPosition, targetPosition, cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, cameraSpeed);
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+                break;
+            case 's':
+                //console.log('s');
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
+                cameraPosition = mathCalc.findPointOnSegment(cameraPosition, targetPosition, -cameraSpeed);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, -cameraSpeed);
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+                break;
+            case 'd':
+                //console.log('d');
+                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
+                var c = cameraPosition;
+                cameraPosition = mathCalc.findPointOnOrtSegment(cameraPosition, targetPosition, -cameraSpeed);
+                //console.log(cameraPosition);
+                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
+                //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, -cameraSpeed);
+                //console.log(targetPosition); w
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+                break;
+            case 'ArrowUp':
+                //var t = roverTargetPosition.map((num, idx) => 2 * num - roverPosition[idx]);
+                var r = roverPosition;
+                var f = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, roverSpeed);
+                var trig = findTriangle(f[0], f[2]);
+                var h = 0.0;
+                //console.log(trig);
+                if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
+                    var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
+                    var y0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 1];
+                    var z0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 2];
+                    var x1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3]];
+                    var y1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 1];
+                    var z1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 2];
+                    var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
+                    var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
+                    var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
+                    h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                }
+                //else {
+                //    var h = f[1];
+                //}
+                //console.log(x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                //console.log(f[0], f[2]);
+                //console.log(h);
+                roverPosition = [f[0], h, f[2]];
+                roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
+
+                cameraPosition = [f[0], h + 2 * roverScale + roverCameraShift, f[2]];
+                targetPosition = [roverTargetPosition[0], h + 2 * roverScale + roverCameraShift, roverTargetPosition[2]];
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+
+                //roverPosition = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, roverSpeed);
+                //roverTargetPosition = roverTargetPosition.map((num, idx) => num + roverPosition[idx] - r[idx]);
+                //console.log(r);
+                //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, roverSpeed);
+
+                for (var i = 0; i < 32; i++) {
+                    boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
+                    //console.log(r);
+                }
+                //console.log(r);
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
+
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+            case 'ArrowDown':
+                //var t = roverTargetPosition.map((num, idx) => 2 * num - roverPosition[idx]);
+                //var r = roverPosition;
+                //roverPosition = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, -roverSpeed);
+                //roverTargetPosition = roverTargetPosition.map((num, idx) => num + roverPosition[idx] - r[idx]);
+                //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, -roverSpeed);
+
+                var r = roverPosition;
+                var f = mathCalc.findPointOnSegment(roverPosition, roverTargetPosition, -roverSpeed);
+                var trig = findTriangle(f[0], f[2]);
+                var h = 0.0;
+
+                if (0 <= trig[0] && trig[0] < fieldWidth && 0 <= trig[1] && trig[1] < fieldHeight && 0 <= trig[2] && trig[2] < fieldWidth && 0 <= trig[3] && trig[3] < fieldHeight && 0 <= trig[4] && trig[4] < fieldWidth && 0 <= trig[5] && trig[5] < fieldHeight) {
+                    var x0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1]];
+                    var y0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 1];
+                    var z0 = boxVertices[6 * fieldHeight * trig[0] + 6 * trig[1] + 2];
+                    var x1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3]];
+                    var y1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 1];
+                    var z1 = boxVertices[6 * fieldHeight * trig[2] + 6 * trig[3] + 2];
+                    var x2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5]];
+                    var y2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 1];
+                    var z2 = boxVertices[6 * fieldHeight * trig[4] + 6 * trig[5] + 2];
+                    h = mathCalc.pointOnTriangle(f[0], f[2], x0, y0, z0, x1, y1, z1, x2, y2, z2);
+                }
+                //else {
+                //    var h = f[1];
+                //}
+
+                roverPosition = [f[0], h, f[2]];
+                roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
+
+                cameraPosition = [f[0], h + 2 * roverScale + roverCameraShift, f[2]];
+                targetPosition = [roverTargetPosition[0], h + 2 * roverScale + roverCameraShift, roverTargetPosition[2]];
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+
+                for (var i = 0; i < 32; i++) {
+                    //boxVertices[offset * 6 * 2 + 6 * i] += roverPosition[0] - r[0];
+                    //boxVertices[offset * 6 * 2 + 6 * i + 2] += roverPosition[2] - r[2];
+                    boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
+                }
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+                //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+                ////console.log(pth);
+                //var cnv2Array = [];
+                //for (var i = 0; i < pth.length; i++) {
+                //    //console.log();
+                //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+                //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+                //}
+                ////console.log(pth);
+                //console.log(cnv2Array);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+            case 'ArrowRight':
+                //var t = roverTargetPosition;
+                //console.log(t);
+                var res_1 = mathCalc.shiftRotateShift([roverTargetPosition[0], roverTargetPosition[2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
+                //roverTargetPosition[0] = roverPosition[0] + (t[0] - roverPosition[0]) * Math.cos(roverSensitivity) - (t[2] - roverPosition[2]) * Math.sin(roverSensitivity);
+                //console.log(t);
+                //roverTargetPosition[2] = roverPosition[2] + (t[0] - roverPosition[0]) * Math.sin(roverSensitivity) + (t[2] - roverPosition[2]) * Math.cos(roverSensitivity);
+                roverTargetPosition[0] = res_1[0];
+                roverTargetPosition[2] = res_1[1];
+
+                for (var i = 0; i < 32; i++) {
+                    //var x = boxVertices[offset * 6 * 2 + 6 * i];
+                    //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
+                    var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
+                    boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];
+                    //boxVertices[offset * 6 * 2 + 6 * i] = roverPosition[0] + (x - roverPosition[0]) * Math.cos(roverSensitivity) - (y - roverPosition[2]) * Math.sin(roverSensitivity);
+                    //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] + (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
+                }
+
+                targetPosition[0] = res_1[0];
+                targetPosition[2] = res_1[1];
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+                //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+                ////console.log(pth);
+                //var cnv2Array = [];
+                //for (var i = 0; i < pth.length; i++) {
+                //    //console.log();
+                //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+                //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+                //}
+                ////console.log(pth);
+                //console.log(cnv2Array);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+            case 'ArrowLeft':
+                //var t = roverTargetPosition;
+                //roverTargetPosition[0] = roverPosition[0] + (t[0] - roverPosition[0]) * Math.cos(roverSensitivity) + (t[2] - roverPosition[2]) * Math.sin(roverSensitivity);
+                //roverTargetPosition[2] = roverPosition[2] - (t[0] - roverPosition[0]) * Math.sin(roverSensitivity) + (t[2] - roverPosition[2]) * Math.cos(roverSensitivity);
+                var res_1 = mathCalc.shiftRotateShift([roverTargetPosition[0], roverTargetPosition[2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
+                roverTargetPosition[0] = res_1[0];
+                roverTargetPosition[2] = res_1[1];
+
+                for (var i = 0; i < 32; i++) {
+                    var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
+                    boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
+                    boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];
+                    //var x = boxVertices[offset * 6 * 2 + 6 * i];
+                    //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
+                    //boxVertices[offset * 6 * 2 + 6 * i] = roverPosition[0] + (x - roverPosition[0]) * Math.cos(roverSensitivity) + (y - roverPosition[2]) * Math.sin(roverSensitivity);
+                    //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] - (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
+                }
+
+                targetPosition[0] = res_1[0];
+                targetPosition[2] = res_1[1];
+
+                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+                gl.useProgram(program1);
+                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
+                gl.useProgram(program2);
+                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
+
+                //console.log(roverPosition);
+                //console.log(roverTargetPosition);
+
+                //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
+                //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
+                ////console.log(pth);
+                //var cnv2Array = [];
+                //for (var i = 0; i < pth.length; i++) {
+                //    //console.log();
+                //    cnv2Array.push([pth[i][2] * forw[2] + pth[i][0] * forw[0], pth[i][0] * forw[2] - pth[i][2] * forw[0]]);
+                //    //cnv2Array.push([mathCalc.euclidNorm([pth[i][0], pth[i][2]]), pth[i][1]]);
+                //}
+                ////console.log(pth);
+                //console.log(cnv2Array);
+
+                //roverBackForwardPath();
+                drawContext(roverBackForwardPath(), roverContextPosition());
+
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
+                gl.vertexAttribPointer(
+                    positionAttribLocation1, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                gl.vertexAttribPointer(
+                    positionAttribLocation2, //Attribute location
+                    3, //number of elements per attribute
+                    gl.FLOAT, //type of elements
+                    gl.FALSE, //normalize
+                    6 * Float32Array.BYTES_PER_ELEMENT,//Size of an individual vertex
+                    0 //offset from the beginning of a single vertex to this attribute
+                );//important2
+                break;
+
+        }
+    }
+
     var onMouseMove = function (event) {
         //event.preventDefault();
         //console.log(event.movementX, event.movementY);
@@ -1616,8 +1979,8 @@ function InitDemo() {
     var onMouseDownMoveUp = function (event) {
         if (changingPoint >= 0) {
             //console.log(event.movementY * dragSensitivity);
-            boxVertices[changingPoint + 1] -= event.movementY * dragSensitivity;
-            boxVertices[changingPoint + 6 * offset + 1] -= event.movementY * dragSensitivity;
+            boxVertices[changingPoint + 1] -= event.movementY * dragSensitivity * MODEL_SCALE;
+            boxVertices[changingPoint + 6 * offset + 1] -= event.movementY * dragSensitivity * MODEL_SCALE;
             //console.log(minHeight, maxHeight);
             //maxHeight = Math.max(maxHeight, boxVertices[changingPoint + 1]);
             //minHeight = Math.min(minHeight, boxVertices[changingPoint + 1]);
@@ -1804,9 +2167,15 @@ function InitDemo() {
                 canvas.requestPointerLock();
                 canvas.removeEventListener('mousedown', onMouseDown, false);
                 canvas.removeEventListener('mouseup', onMouseUp, false);
+                document.removeEventListener('keydown', onKeyDownRoverMode, false);
+                roverMode = false;
             }
             if (event.key == 'r') {
-
+                document.addEventListener('keydown', onKeyDownRoverMode, false);
+                //document.removeEventListener('pointerlockchange', lockStatusChange, false);
+                document.removeEventListener('keydown', onKeyDown, false);
+                canvas.removeEventListener('mousemove', onMouseMove, false);
+                roverMode = true;
             }
         },
         false
@@ -1826,6 +2195,8 @@ function InitDemo() {
             canvas.removeEventListener('mousemove', onMouseMove, false);
             canvas.addEventListener('mousedown', onMouseDown, false);
             canvas.addEventListener('mouseup', onMouseUp, false);
+            document.removeEventListener('keydown', onKeyDownRoverMode, false);
+            roverMode = false;
         }
     }
 
@@ -1838,7 +2209,7 @@ function InitDemo() {
     //console.log(gl.getParameter(gl.LINE_WIDTH));
     var identityMatrix = new Float32Array(16);
     glMatrix.mat4.identity(identityMatrix);
-    var angle = 0;
+    //var angle = 0;
     function loop() {
 
         var check1 = [targetPosition[0] - cameraPosition[0], targetPosition[1] - cameraPosition[1], targetPosition[2] - cameraPosition[2]];
@@ -1917,7 +2288,8 @@ i_1: ${i_1} j_1: ${j_1}
 i_2: ${i_2} j_2: ${j_2}
 i_3: ${i_3} j_3: ${j_3}
 maxHeight: ${maxHeight.toFixed(3)}
-minHeight: ${minHeight.toFixed(3)}`;
+minHeight: ${minHeight.toFixed(3)}
+roverMode: ${roverMode}`;
         //box: ${ boxVertices[6 * fieldHeight * i + 6 * j].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 1].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 2].toFixed(3) }
 
         //console.log(text);

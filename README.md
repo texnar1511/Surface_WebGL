@@ -13,3 +13,5 @@ Free mode controls:
 WASDSpaceShift - camera position
 
 Arrows - rover position
+
+R - camera on rover mode

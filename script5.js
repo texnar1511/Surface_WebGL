@@ -140,7 +140,7 @@ function InitDemo() {
     var canvases = document.getElementsByTagName("canvas");
     //console.log(canvases);
     var canvas = canvases[0];
-    var gl = canvas.getContext("webgl");
+    var gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
     //gl.canvas.width = window.;
     //gl.canvas.height = 500;
     //console.log(canvas.width, canvas.height);
@@ -202,11 +202,11 @@ function InitDemo() {
     gl.enable(gl.DEPTH_TEST);
 
     gl.enable(gl.POLYGON_OFFSET_FILL);
-    gl.polygonOffset(-1, 0);
+    //gl.polygonOffset(0, 0);
 
 
     var roverMode = false;
-    var roverCameraShift = 4;
+    var roverCameraShift = 2;
 
     //gl.depthRange(0.2, 0.8);
 
@@ -283,8 +283,8 @@ function InitDemo() {
 
     var boxVertices = [];
 
-    var fieldWidth = 100;//20;
-    var fieldHeight = 100;//20;
+    var fieldWidth = 180;//20;
+    var fieldHeight = 180;//20;
 
     var maxHeight = -Infinity;
     var minHeight = Infinity;
@@ -512,6 +512,9 @@ function InitDemo() {
     boxVertices.push(roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 0.0);
     boxVertices.push(-roverScale, 2 * roverScale, roverScale, 0.0, 0.0, 0.0);
     boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 0.0);
+    //forward vector
+    boxVertices.push(0, roverScale, 0, 0.0, 0.0, 0.0);
+    boxVertices.push(0, roverScale, 2 * roverScale, 0.0, 0.0, 0.0);
 
     //console.log(boxVertices.slice(0, fieldWidth * fieldHeight * 6));
 
@@ -623,7 +626,9 @@ function InitDemo() {
     boxIndices.push(2 * offset + roverOffset + 1, 2 * offset + roverOffset + 5);
     boxIndices.push(2 * offset + roverOffset + 3, 2 * offset + roverOffset + 7);
 
-    var roverLinesLength = 2 * 24;
+    boxIndices.push(2 * offset + roverOffset + 8, 2 * offset + roverOffset + 9);
+
+    var roverLinesLength = 2 * 25;
 
     boxIndices = new Float32Array(boxIndices);
     //console.log(boxIndices, typeof (boxIndices));
@@ -735,7 +740,7 @@ function InitDemo() {
     var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
     var roverTargetPosition = [boxVertices[0], boxVertices[1], boxVertices[2] + 1];
 
-    for (var i = 0; i < 32; i++) {
+    for (var i = 0; i < 34; i++) {
         boxVertices[2 * 6 * offset + 6 * i + 1] += boxVertices[1];
     }
 
@@ -785,8 +790,13 @@ function InitDemo() {
     glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
     //console.log(viewMatrix);
     //glMatrix.mat4.identity(viewMatrix);
+
+    var cameraFOV = 90.0;
+
+    //gl.lineWidth(5);
+
     glMatrix.mat4.identity(projMatrix);
-    glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(90), aspectRatio, 0.1, 1000.0);
+    glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(cameraFOV), aspectRatio, 0.1, 2000.0);
 
 
 
@@ -1212,7 +1222,7 @@ function InitDemo() {
                 //console.log(r);
                 //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, roverSpeed);
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
                     boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
                     boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
@@ -1276,7 +1286,7 @@ function InitDemo() {
                 roverPosition = [f[0], h, f[2]];
                 roverTargetPosition = [roverTargetPosition[0] + f[0] - r[0], h, roverTargetPosition[2] + f[2] - r[2]];
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     //boxVertices[offset * 6 * 2 + 6 * i] += roverPosition[0] - r[0];
                     //boxVertices[offset * 6 * 2 + 6 * i + 2] += roverPosition[2] - r[2];
                     boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
@@ -1330,7 +1340,7 @@ function InitDemo() {
                 roverTargetPosition[0] = res_1[0];
                 roverTargetPosition[2] = res_1[1];
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     //var x = boxVertices[offset * 6 * 2 + 6 * i];
                     //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
                     var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
@@ -1384,7 +1394,7 @@ function InitDemo() {
                 roverTargetPosition[0] = res_1[0];
                 roverTargetPosition[2] = res_1[1];
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
                     boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
                     boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];
@@ -1473,67 +1483,7 @@ function InitDemo() {
         //console.log(event.key);
 
         switch (event.key) {
-            case 'w':
-                //console.log('w');
-                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
-                var c = cameraPosition;
-                //console.log(c);
-                cameraPosition = mathCalc.findPointOnSegment(cameraPosition, targetPosition, cameraSpeed);
-                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
-                //console.log(c);
-                //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, cameraSpeed);
-                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
 
-                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.useProgram(program1);
-                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
-                gl.useProgram(program2);
-                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
-                break;
-            case 'a':
-                //console.log('a');
-                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
-                var c = cameraPosition;
-                cameraPosition = mathCalc.findPointOnOrtSegment(cameraPosition, targetPosition, cameraSpeed);
-                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
-                //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, cameraSpeed);
-
-                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.useProgram(program1);
-                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
-                gl.useProgram(program2);
-                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
-                break;
-            case 's':
-                //console.log('s');
-                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
-                var c = cameraPosition;
-                cameraPosition = mathCalc.findPointOnSegment(cameraPosition, targetPosition, -cameraSpeed);
-                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
-                //targetPosition = mathCalc.findPointOnSegment(targetPosition, t, -cameraSpeed);
-
-                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.useProgram(program1);
-                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
-                gl.useProgram(program2);
-                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
-                break;
-            case 'd':
-                //console.log('d');
-                //var t = targetPosition.map((num, idx) => 2 * num - cameraPosition[idx]);
-                var c = cameraPosition;
-                cameraPosition = mathCalc.findPointOnOrtSegment(cameraPosition, targetPosition, -cameraSpeed);
-                //console.log(cameraPosition);
-                targetPosition = targetPosition.map((num, idx) => num + cameraPosition[idx] - c[idx]);
-                //targetPosition = mathCalc.findPointOnOrtSegment(targetPosition, t, -cameraSpeed);
-                //console.log(targetPosition); w
-
-                glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-                gl.useProgram(program1);
-                gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
-                gl.useProgram(program2);
-                gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
-                break;
             case 'ArrowUp':
                 //var t = roverTargetPosition.map((num, idx) => 2 * num - roverPosition[idx]);
                 var r = roverPosition;
@@ -1565,6 +1515,8 @@ function InitDemo() {
                 cameraPosition = [f[0], h + 2 * roverScale + roverCameraShift, f[2]];
                 targetPosition = [roverTargetPosition[0], h + 2 * roverScale + roverCameraShift, roverTargetPosition[2]];
 
+                cameraPitch = 0.0;
+
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.useProgram(program1);
                 gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
@@ -1576,7 +1528,7 @@ function InitDemo() {
                 //console.log(r);
                 //roverTargetPosition = mathCalc.findPointOnSegment(roverTargetPosition, t, roverSpeed);
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
                     boxVertices[offset * 6 * 2 + 6 * i + 1] += h - r[1];
                     boxVertices[offset * 6 * 2 + 6 * i + 2] += f[2] - r[2];
@@ -1643,13 +1595,15 @@ function InitDemo() {
                 cameraPosition = [f[0], h + 2 * roverScale + roverCameraShift, f[2]];
                 targetPosition = [roverTargetPosition[0], h + 2 * roverScale + roverCameraShift, roverTargetPosition[2]];
 
+                cameraPitch = 0.0;
+
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.useProgram(program1);
                 gl.uniformMatrix4fv(matViewUniformLocation1, gl.FALSE, viewMatrix);
                 gl.useProgram(program2);
                 gl.uniformMatrix4fv(matViewUniformLocation2, gl.FALSE, viewMatrix);
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     //boxVertices[offset * 6 * 2 + 6 * i] += roverPosition[0] - r[0];
                     //boxVertices[offset * 6 * 2 + 6 * i + 2] += roverPosition[2] - r[2];
                     boxVertices[offset * 6 * 2 + 6 * i] += f[0] - r[0];
@@ -1703,7 +1657,7 @@ function InitDemo() {
                 roverTargetPosition[0] = res_1[0];
                 roverTargetPosition[2] = res_1[1];
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     //var x = boxVertices[offset * 6 * 2 + 6 * i];
                     //var y = boxVertices[offset * 6 * 2 + 6 * i + 2];
                     var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], roverSensitivity);
@@ -1715,6 +1669,8 @@ function InitDemo() {
 
                 targetPosition[0] = res_1[0];
                 targetPosition[2] = res_1[1];
+
+                cameraPitch = 0.0;
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.useProgram(program1);
@@ -1766,7 +1722,7 @@ function InitDemo() {
                 roverTargetPosition[0] = res_1[0];
                 roverTargetPosition[2] = res_1[1];
 
-                for (var i = 0; i < 32; i++) {
+                for (var i = 0; i < 34; i++) {
                     var res_2 = mathCalc.shiftRotateShift([boxVertices[offset * 6 * 2 + 6 * i], boxVertices[offset * 6 * 2 + 6 * i + 2]], [roverPosition[0], roverPosition[2]], -roverSensitivity);
                     boxVertices[offset * 6 * 2 + 6 * i] = res_2[0];
                     boxVertices[offset * 6 * 2 + 6 * i + 2] = res_2[1];
@@ -1778,6 +1734,8 @@ function InitDemo() {
 
                 targetPosition[0] = res_1[0];
                 targetPosition[2] = res_1[1];
+
+                cameraPitch = 0.0;
 
                 glMatrix.mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
                 gl.useProgram(program1);
@@ -2200,6 +2158,17 @@ function InitDemo() {
         }
     }
 
+    var btn = document.getElementById("btn");
+    btn.addEventListener("click", function () {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.href = canvas.toDataURL("image/png", 1.0);
+        console.log(a.href);
+        a.download = "canvas-image.png";
+        a.click();
+        document.body.removeChild(a);
+    });
+
     //document.addEventListener('keydown', (e) => onKeyDown(e), false);
     //document.addEventListener('mousemove', (e) => onMouseMove(e), false);
     //
@@ -2211,6 +2180,17 @@ function InitDemo() {
     glMatrix.mat4.identity(identityMatrix);
     //var angle = 0;
     function loop() {
+
+        //var btn = document.getElementById("btn");
+        //btn.addEventListener("click", function () {
+        //    var a = document.createElement("a");
+        //    document.body.appendChild(a);
+        //    a.href = canvas.toDataURL();
+        //    console.log(a.href);
+        //    a.download = "canvas-image.png";
+        //    a.click();
+        //    document.body.removeChild(a);
+        //});
 
         var check1 = [targetPosition[0] - cameraPosition[0], targetPosition[1] - cameraPosition[1], targetPosition[2] - cameraPosition[2]];
         var check2 = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
@@ -2282,14 +2262,17 @@ camera forward: ${check1.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check1).t
 rover: ${roverPosition.map(x => x.toFixed(3))}
 rover forward: ${check2.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check2).toFixed(3)}
 scale: ${MODEL_SCALE}
-i: ${i} j: ${j}
-res_i: ${res_i.toFixed(3)} res_j: ${res_j.toFixed(3)}
-i_1: ${i_1} j_1: ${j_1}
-i_2: ${i_2} j_2: ${j_2}
-i_3: ${i_3} j_3: ${j_3}
 maxHeight: ${maxHeight.toFixed(3)}
 minHeight: ${minHeight.toFixed(3)}
-roverMode: ${roverMode}`;
+roverMode: ${roverMode}
+danger: true`;
+
+        //i: ${ i } j: ${ j }
+        //res_i: ${ res_i.toFixed(3) } res_j: ${ res_j.toFixed(3) }
+        //i_1: ${ i_1 } j_1: ${ j_1 }
+        //i_2: ${ i_2 } j_2: ${ j_2 }
+        //i_3: ${ i_3 } j_3: ${ j_3 }
+
         //box: ${ boxVertices[6 * fieldHeight * i + 6 * j].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 1].toFixed(3) }, ${ boxVertices[6 * fieldHeight * i + 6 * j + 2].toFixed(3) }
 
         //console.log(text);

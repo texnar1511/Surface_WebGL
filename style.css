@@ -8,7 +8,7 @@
 
 #btn {
     position: absolute;
-    left: 92%;
+    left: 91%;
     top: 0%;
 }
 
@@ -52,7 +52,7 @@
 #canvas2-wrapper {
     position: relative;
     width: 800px;
-    height: 230px;
+    height: 250px;
     left: -6px;
     top: -5px;
 }

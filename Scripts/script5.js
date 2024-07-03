@@ -4,7 +4,11 @@ var vertexShaderText =
         
         attribute vec3 vertPosition;
         attribute vec3 vertColor;
+        attribute vec3 vertNormal;
+
         varying vec3 fragColor;
+        varying vec3 fragNormal;
+        
         uniform mat4 mModel;
         uniform mat4 mView;
         uniform mat4 mProj;
@@ -12,11 +16,23 @@ var vertexShaderText =
         varying float height;
 
         varying vec4 position;
+
+        float random(vec2 st)
+        {
+            return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+        }
         
         void main()
         {
+            //vec2 st = gl_FragColor.xy / u_resolution.xy;
+
+            //float rnd = random(st);
+
             fragColor = vertColor;
+            //fragNormal = (mModel * vec4(vertNormal, 0.0)).xyz;
+            fragNormal = vertNormal;
             gl_Position = mProj * mView * mModel * vec4(vertPosition, 1.0);
+            //gl_Position.y += rnd;
             position = gl_Position;
             height = vertPosition.y;
         }
@@ -35,6 +51,8 @@ var fragmentShaderText1 =
         //uniform float height;
         uniform float maxHeight;
         uniform float minHeight;
+
+        varying vec3 fragNormal;
 
         varying float height;
 
@@ -102,7 +120,9 @@ var fragmentShaderText1 =
             vec3 c = fragColor;
             //gl_FragColor = vec4(fragColor, 1.0);
             //gl_FragColor = vec4(c.r > c.g && c.r > c.b ? c.r : 0.0, c.g > c.r && c.g > c.b ? c.g : 0.0, c.b > c.r && c.b > c.g ? c.b : 0.0, 1.0 );
+            
             gl_FragColor = vec4(getColor((height - minHeight) / (maxHeight - minHeight)), 1.0);
+            //gl_FragColor = vec4(fragColor, 1.0);
         }
     `;
 
@@ -114,8 +134,16 @@ var fragmentShaderText2 =
 
         varying vec4 position;
 
+        varying vec3 fragNormal;
+
         void main()
         {
+            //vec3 ambientLightIntensity = vec3(0.2, 0.2, 0.3);
+            //vec3 sunlightIntensity = vec3(0.7, 0.6, 0.4);
+            //vec3 sunlightDirection = normalize(vec3(1.0, -4.0, 0.0));
+
+            //vec4 texel = texture2D()
+
             gl_FragColor = vec4(fragColor, 1.0);
         }
     `;
@@ -131,6 +159,7 @@ function InitDemo() {
     var distance2 = function (px, py, x, y) {
         return Math.pow(x - px, 2) + Math.pow(y - py, 2);
     };
+
     //console.log(mathCalc.ABRACADABRA);
     //console.log(mathCalc.findPointOnSegment([0, 1, 1], [1, 2, 3], 1));
     //console.log(mathCalc.findPointOnOrtSegment([0, 1, 1], [1, 2, 3], 1));
@@ -216,7 +245,7 @@ function InitDemo() {
 
 
     var roverMode = false;
-    var roverCameraShift = 2;
+    var roverCameraShift = 4;
 
     //gl.depthRange(0.2, 0.8);
 
@@ -293,8 +322,8 @@ function InitDemo() {
 
     var boxVertices = [];
 
-    var fieldWidth = 50;//20;
-    var fieldHeight = 50;//20;
+    var fieldWidth = 100;//20;
+    var fieldHeight = 100;//20;
 
     var maxHeight = -Infinity;
     var minHeight = Infinity;
@@ -373,6 +402,12 @@ function InitDemo() {
     //console.log(widthRH, heightRH);
     //console.log(randomHeights);
 
+    var displacementMap = [];
+
+    for (var i = 0; i < fieldWidth * fieldHeight; i++) {
+        displacementMap.push(Math.random());
+    }
+
     for (var i = 0; i < fieldWidth; i++) {
         for (var j = 0; j < fieldHeight; j++) {
             //console.log(`${i * SQRT32}, ${j + (i % 2) / 2}`);
@@ -403,19 +438,19 @@ function InitDemo() {
                 randomHeights[interI * heightRH + interJ + 1],
                 randomHeights[(interI + 1) * heightRH + interJ],
                 randomHeights[(interI + 1) * heightRH + interJ + 1],
-            );
+            ) * MODEL_SCALE + displacementMap[i * fieldHeight + j] * MODEL_SCALE * 0.5;
 
             //console.log(tmpHeight);
 
 
-            maxHeight = Math.max(maxHeight, tmpHeight * MODEL_SCALE);
-            minHeight = Math.min(minHeight, tmpHeight * MODEL_SCALE);
+            maxHeight = Math.max(maxHeight, tmpHeight);
+            minHeight = Math.min(minHeight, tmpHeight);
             //var tmpRed = Math.random();
             //var tmpGreen = Math.random();
             //var tmpBlue = Math.random();
-            var tmpRed = 0.0;
-            var tmpGreen = 1.0;
-            var tmpBlue = 0.0;
+            //var tmpRed = 0.0;
+            //var tmpGreen = 1.0;
+            //var tmpBlue = 0.0;
             ////console.log(tmpHeight);
             //if (blueHeight <= tmpHeight && tmpHeight <= greenHeight) {
             //    tmpRed = 0.0;
@@ -435,8 +470,18 @@ function InitDemo() {
             //}
             //console.log(tmpRed, tmpGreen, tmpBlue);
             //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpHeight, tmpHeight, tmpHeight);
-            boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpRed, tmpGreen, tmpBlue);
+            boxVertices.push(MODEL_SCALE * i * SQRT32, tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), 0.0, 1.0, 0.0);
             //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), Math.random(), Math.random(), Math.random());
+        }
+    }
+
+    var createNormalMap = function (box, w, h) {
+        for (var i = 0; i < w; i++) {
+            for (var j = 0; j < h; j++) {
+
+                var a = [box[6 * (i * h + j)], box[6 * (i * h + j) + 1], box[6 * (i * h + j) + 2]];
+                var b = [box[6 * (i * h + j)], box[6 * (i * h + j) + 1], box[6 * (i * h + j) + 2]];
+            }
         }
     }
 
@@ -642,21 +687,29 @@ function InitDemo() {
 
     var roverLinesLength = 2 * 25;
 
-    console.log(boxIndices);
+    //console.log(boxIndices);
     //function onlyUnique(value, index, array) {
     //    return array.indexOf(value) === index;
     //}
     //console.log(boxIndices.filter(onlyUnique));
 
     boxIndices = new Float32Array(boxIndices);
-    console.log(new Uint32Array(boxIndices));
+    //console.log(new Uint32Array(boxIndices));
 
     //var linesLength = boxIndices.length - trianglesLength;
     //console.log(trianglesLength, linesLength);
     //console.log(Float32Array.BYTES_PER_ELEMENT);
 
 
+    var normalVertices = [];
 
+    //console.log(boxVertices.length);
+    //console.log(6 * (2 * offset + roverVerticesLength));
+
+    //for (var i = 0; i < 2 * offset + roverVerticesLength; i++) {
+    //    //normalVertices.push(Math.random(), Math.random(), Math.random());
+    //    normalVertices.push(0.0, 1.0, 0.0);
+    //}
 
     var boxVertexBufferObject = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, boxVertexBufferObject);
@@ -668,6 +721,7 @@ function InitDemo() {
 
     var positionAttribLocation1 = gl.getAttribLocation(program1, 'vertPosition');//name from shader program
     var colorAttribLocation1 = gl.getAttribLocation(program1, 'vertColor');//name from shader program
+
     gl.vertexAttribPointer(
         positionAttribLocation1, //Attribute location   
         3, //number of elements per attribute
@@ -687,6 +741,24 @@ function InitDemo() {
 
     gl.enableVertexAttribArray(positionAttribLocation1);
     gl.enableVertexAttribArray(colorAttribLocation1);
+
+
+    //var boxNormalBufferObject = gl.createBuffer();
+    //gl.bindBuffer(gl.ARRAY_BUFFER, boxNormalBufferObject);
+    //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalVertices), gl.STATIC_DRAW);
+
+    //var normalAttribLocation1 = gl.getAttribLocation(program1, 'vertNormal');
+
+    //gl.vertexAttribPointer(
+    //    normalAttribLocation1,
+    //    3,
+    //    gl.FLOAT,
+    //    gl.TRUE,
+    //    3 * Float32Array.BYTES_PER_ELEMENT,
+    //    0
+    //);
+
+    //gl.enableVertexAttribArray(normalAttribLocation1);
 
     var positionAttribLocation2 = gl.getAttribLocation(program2, 'vertPosition');//name from shader program
     var colorAttribLocation2 = gl.getAttribLocation(program2, 'vertColor');//name from shader program
@@ -709,6 +781,19 @@ function InitDemo() {
 
     gl.enableVertexAttribArray(positionAttribLocation2);
     gl.enableVertexAttribArray(colorAttribLocation2);
+
+    //var normalAttribLocation2 = gl.getAttribLocation(program2, 'vertNormal');
+
+    //gl.vertexAttribPointer(
+    //    normalAttribLocation2,
+    //    3,
+    //    gl.FLOAT,
+    //    gl.TRUE,
+    //    3 * Float32Array.BYTES_PER_ELEMENT,
+    //    0
+    //);
+
+    //gl.enableVertexAttribArray(normalAttribLocation2);
 
     //tell opengl state machine which program should be active
     //gl.useProgram(program1);
@@ -752,7 +837,7 @@ function InitDemo() {
     var changingPoint = -1;
     var dragSensitivity = 0.05;
 
-    var rover = new Rover(1, 2);
+    //var rover = new Rover(1, 2);
 
     //console.log(boxVertices[1]);
     var roverPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
@@ -952,7 +1037,7 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var ticks = 60;
+        var ticks = 40;
 
         var startX = rovPos[0] - ticks * rovSpd * forward[0];
         var startY = rovPos[2] - ticks * rovSpd * forward[2];
@@ -1010,8 +1095,10 @@ function InitDemo() {
         return cnv2Array;
     }
 
-    var drawArray = function (a) {
+    var drawArray = function (a, lineWidth, strokeStyle) {
         //ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = strokeStyle;
         ctx.beginPath();
         ctx.moveTo(a[0][0], a[0][1]);
         for (var i = 1; i < a.length; i++) {
@@ -1020,12 +1107,19 @@ function InitDemo() {
         ctx.stroke();
     }
 
+    var drawScatter = function (a, lineWidth, fillStyle) {
+        ctx.fillStyle = fillStyle;
+        for (var i = 1; i < a.length; i++) {
+            ctx.fillRect(a[i][0] - lineWidth / 2, a[i][1] - lineWidth / 2, lineWidth, lineWidth);
+        }
+    }
+
     var contextScale = 4;
 
-    var drawContext = function (path, pos) {
+    var drawContext = function (paths, pos) {
         ctx.resetTransform();
         //console.log(pos);
-        var pathH = path.map(x => x[1]);
+        //var pathH = path.map(x => x[1]);
         ctx.translate(canvas2.width / 2, canvas2.height);
         //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height);
         //ctx.translate(canvas2.width / 2 - pos[0] * contextScale, canvas2.height + (Math.max.apply(Math, pathH) + Math.min.apply(Math, pathH)) * contextScale / 2);
@@ -1040,12 +1134,27 @@ function InitDemo() {
         //console.log(k, b);
         //ctx.scale(k, 1);
         //ctx.translate(b, 0);
-        ctx.lineWidth = 3 / contextScale;
+        var lineWidth = 3 / contextScale;
         //ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
         ctx.clearRect(pos[0] - canvas2.width, pos[1] - canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
         //ctx.clearRect(0, 0, canvas2.width, canvas2.height);
-        drawArray(path);
+
+        //drawArray(path);
+
+        var styles = ["#000000", "#ff0000", "#00ff00"];
+        var lineWidths = [lineWidth * 0.1, lineWidth * 2, lineWidth];
+
+        for (var i = 0; i < paths.length; i++) {
+            if (paths[i][1] == 'line') {
+                drawArray(paths[i][0], lineWidths[i], styles[i]);
+            }
+            else if (paths[i][1] == 'scatter') {
+                drawScatter(paths[i][0], lineWidths[i], styles[i]);
+            }
+        }
+
         ctx.strokeStyle = "#ff00ff";
+        ctx.lineWidth = lineWidth;
         ctx.beginPath();
         ctx.moveTo(pos[0], pos[1]);
         ctx.lineTo(pos[0], pos[1] + 2 * contextScale);
@@ -1053,8 +1162,82 @@ function InitDemo() {
         ctx.strokeStyle = "#000000";
     }
 
+    var normaVector = function (a) {
+        var ans = 0.0;
+        for (var i = 0; i < a.length; i++) {
+            ans += a[i] * a[i];
+        }
+        return Math.sqrt(ans);
+    }
+
+    var dotProductVectors = function (a, b) {
+        var n = Math.min(a.length, b.length);
+        var ans = 0.0;
+        for (var i = 0; i < n; i++) {
+            ans += a[i] * b[i];
+        }
+        return ans;
+    }
+
+    var angleBetweenVectors = function (a, b) {
+        //console.log(dotProductVectors(a, b), normaVector(a), normaVector(b), dotProductVectors(a, b) / (normaVector(a) * normaVector(b)));
+        return Math.acos(dotProductVectors(a, b) / (normaVector(a) * normaVector(b)));
+    }
+
+    var angleBetweenVectors2 = function (a, b) {
+        return Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]);
+    }
+
+    var compareEpsilon = 1e-10;
+    var roverWheelRadius = 10.0;
+
+    //console.log(compareEpsilon);
+
+    var findSimplifiedPath = function (path) {
+        var wheelCenter = [path[0]];
+        for (var i = 1; i < path.length - 1; i++) {
+            var angle = angleBetweenVectors2([path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]], [path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]]);
+            if (Math.abs(angle) >= compareEpsilon) {
+                wheelCenter.push(path[i]);
+            }
+        }
+        wheelCenter.push(path[path.length - 1]);
+        return wheelCenter;//.map(x => [x[0], x[1] + contextScale]);
+    }
+
+    var findPointOnDistanceFromLine = function (a, b, distance) {
+        var line = [b[0] - a[0], b[1] - a[1]];
+        var ort = [-line[1], line[0]];
+        var n = normaVector(line);
+        return a.map((x, idx) => x + ort[idx] * distance / n);
+    }
+
+    var findWheelCenter = function (path) {
+        var wheelCenter = [];
+        for (var i = 0; i < path.length - 1; i++) {
+            wheelCenter.push(findPointOnDistanceFromLine(path[i], path[i + 1], roverWheelRadius));
+        }
+        return wheelCenter
+    }
+
     //console.log(roverBackForwardPath());
-    drawContext(roverBackForwardPath(), roverContextPosition());
+
+    var workingContext = function () {
+        var path = roverBackForwardPath();
+        var pos = roverContextPosition();
+        var simplePath = findSimplifiedPath(path);
+        var wheelCenter = findWheelCenter(simplePath);
+        //simplePath.map(x => [x[0], x[1] + contextScale])
+        drawContext([[path, 'line'], [wheelCenter, 'scatter'], [simplePath, 'scatter']], pos);
+    }
+
+    workingContext();
+
+    //drawContext([findWheelCenter(roverBackForwardPath())], roverContextPosition());
+
+    //console.log(roverBackForwardPath(), roverContextPosition());
+
+    //findWheelCenter(roverBackForwardPath());
 
     //var pth = findPath(roverPosition, roverTargetPosition, roverSpeed);
     //var forw = [roverTargetPosition[0] - roverPosition[0], roverTargetPosition[1] - roverPosition[1], roverTargetPosition[2] - roverPosition[2]];
@@ -1252,7 +1435,8 @@ function InitDemo() {
                 //console.log(roverTargetPosition);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
@@ -1328,7 +1512,8 @@ function InitDemo() {
                 //console.log(cnv2Array);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1384,7 +1569,8 @@ function InitDemo() {
                 //console.log(cnv2Array);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1438,7 +1624,8 @@ function InitDemo() {
                 //console.log(cnv2Array);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1558,8 +1745,8 @@ function InitDemo() {
                 //console.log(roverTargetPosition);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
-
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1645,7 +1832,8 @@ function InitDemo() {
                 //console.log(cnv2Array);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1712,7 +1900,8 @@ function InitDemo() {
                 //console.log(cnv2Array);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -1777,7 +1966,8 @@ function InitDemo() {
                 //console.log(cnv2Array);
 
                 //roverBackForwardPath();
-                drawContext(roverBackForwardPath(), roverContextPosition());
+                //drawContext(roverBackForwardPath(), roverContextPosition());
+                workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2374,11 +2564,12 @@ danger: true`;
         //check
 
         var indexType = gl.UNSIGNED_INT;
+        //console.log(gl.sizeInBytes(gl.FLOAT));
 
         gl.useProgram(program1);
         gl.drawElements(gl.TRIANGLES, trianglesLength, indexType, 0);
         gl.useProgram(program2);
-        gl.drawElements(gl.LINES, linesLength, indexType, 4 * trianglesLength);
+        gl.drawElements(gl.LINES, linesLength, indexType, 4 * trianglesLength); //multiple by indexType size in bytes uint is 32 bits -> 4 bytes
         gl.drawElements(gl.TRIANGLES, roverLength, indexType, 4 * (trianglesLength + linesLength));
         gl.drawElements(gl.LINES, roverLinesLength, indexType, 4 * (trianglesLength + linesLength + roverLength));
         //gl.drawElements(gl.LINES, linesLength, gl.UNSIGNED_SHORT, 20);

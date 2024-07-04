@@ -438,7 +438,7 @@ function InitDemo() {
                 randomHeights[interI * heightRH + interJ + 1],
                 randomHeights[(interI + 1) * heightRH + interJ],
                 randomHeights[(interI + 1) * heightRH + interJ + 1],
-            ) * MODEL_SCALE + displacementMap[i * fieldHeight + j] * MODEL_SCALE * 0.5;
+            ) * MODEL_SCALE + displacementMap[i * fieldHeight + j] * MODEL_SCALE * 1.0;
 
             //console.log(tmpHeight);
 
@@ -1108,10 +1108,36 @@ function InitDemo() {
     }
 
     var drawScatter = function (a, lineWidth, fillStyle) {
-        ctx.fillStyle = fillStyle;
-        for (var i = 1; i < a.length; i++) {
+        ctx.fillStyle = "#0000ff";
+        ctx.fillRect(a[0][0] - lineWidth / 2, a[0][1] - lineWidth / 2, lineWidth, lineWidth);
+        ctx.fillStyle = fillStyle
+        for (var i = 1; i < a.length - 1; i++) {
             ctx.fillRect(a[i][0] - lineWidth / 2, a[i][1] - lineWidth / 2, lineWidth, lineWidth);
         }
+        ctx.fillStyle = "#00ffff";
+        ctx.fillRect(a[a.length - 1][0] - lineWidth / 2, a[a.length - 1][1] - lineWidth / 2, lineWidth, lineWidth);
+    }
+
+    var drawWheelCenter = function (a, lineWidth, strokeStyle) {
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = strokeStyle;
+        ctx.beginPath();
+        ctx.moveTo(a[0][0][0], a[0][0][1]);
+        for (var i = 1; i < a.length - 1; i++) {
+            if (a[i].length == 1) {
+                ctx.lineTo(a[i][0][0], a[i][0][1]);
+            }
+            else if (a[i].length == 3) {
+                ctx.lineTo(a[i][0][0], a[i][0][1]);
+                var startAngle = Math.PI - angleBetweenVectors2([-roverWheelRadius, 0], [a[i][0][0] - a[i][2][0], a[i][0][1] - a[i][2][1]]);
+                var endAngle = Math.PI - angleBetweenVectors2([-roverWheelRadius, 0], [a[i][1][0] - a[i][2][0], a[i][1][1] - a[i][2][1]]);
+                //console.log(startAngle, endAngle);
+                ctx.arc(a[i][2][0], a[i][2][1], roverWheelRadius, startAngle, endAngle, counterclockwise = true);
+                ctx.moveTo(a[i][1][0], a[i][1][1]);
+            }
+        }
+        ctx.lineTo(a[a.length - 1][0][0], a[a.length - 1][0][1]);
+        ctx.stroke();
     }
 
     var contextScale = 4;
@@ -1136,13 +1162,13 @@ function InitDemo() {
         //ctx.translate(b, 0);
         var lineWidth = 3 / contextScale;
         //ctx.clearRect(-canvas2.width, -canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
-        ctx.clearRect(pos[0] - canvas2.width, pos[1] - canvas2.height, 2 * canvas2.width, 2 * canvas2.height);
+        ctx.clearRect(pos[0] - 2 * canvas2.width, pos[1] - 2 * canvas2.height, 4 * canvas2.width, 4 * canvas2.height);
         //ctx.clearRect(0, 0, canvas2.width, canvas2.height);
 
         //drawArray(path);
 
         var styles = ["#000000", "#ff0000", "#00ff00"];
-        var lineWidths = [lineWidth * 0.1, lineWidth * 2, lineWidth];
+        var lineWidths = [lineWidth * 0.5, lineWidth * 0.5, lineWidth * 1.0];
 
         for (var i = 0; i < paths.length; i++) {
             if (paths[i][1] == 'line') {
@@ -1151,6 +1177,9 @@ function InitDemo() {
             else if (paths[i][1] == 'scatter') {
                 drawScatter(paths[i][0], lineWidths[i], styles[i]);
             }
+            else if (paths[i][1] == 'wheelCenter') {
+                drawWheelCenter(paths[i][0], lineWidths[i], styles[i]);
+            }
         }
 
         ctx.strokeStyle = "#ff00ff";
@@ -1158,6 +1187,7 @@ function InitDemo() {
         ctx.beginPath();
         ctx.moveTo(pos[0], pos[1]);
         ctx.lineTo(pos[0], pos[1] + 2 * contextScale);
+        //ctx.arc(pos[0], pos[1], roverWheelRadius, 0, Math.PI);
         ctx.stroke();
         ctx.strokeStyle = "#000000";
     }
@@ -1188,13 +1218,15 @@ function InitDemo() {
         return Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]);
     }
 
-    var compareEpsilon = 1e-10;
+    var compareEpsilon = 1e-1;
     var roverWheelRadius = 10.0;
 
     //console.log(compareEpsilon);
 
     var findSimplifiedPath = function (path) {
-        var wheelCenter = [path[0]];
+        var wheelCenter = [];
+        wheelCenter.push(path[0]);
+        //console.log(path[0], wheelCenter[0]);
         for (var i = 1; i < path.length - 1; i++) {
             var angle = angleBetweenVectors2([path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]], [path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]]);
             if (Math.abs(angle) >= compareEpsilon) {
@@ -1202,21 +1234,45 @@ function InitDemo() {
             }
         }
         wheelCenter.push(path[path.length - 1]);
+        //console.log(path[path.length - 1], wheelCenter[wheelCenter.length - 1]);
         return wheelCenter;//.map(x => [x[0], x[1] + contextScale]);
     }
 
     var findPointOnDistanceFromLine = function (a, b, distance) {
         var line = [b[0] - a[0], b[1] - a[1]];
-        var ort = [-line[1], line[0]];
+        var ort = line[0] >= 0 ? [-line[1], line[0]] : [line[1], -line[0]];
         var n = normaVector(line);
         return a.map((x, idx) => x + ort[idx] * distance / n);
     }
 
+    var findIntersectionLines = function (a, b, c, d) {
+        var numerator_x = (c[0] * d[1] - c[1] * d[0]) * (a[0] - b[0]) + (a[0] * b[1] - a[1] * b[0]) * (d[0] - c[0]);
+        var denominator_x = (a[1] - b[1]) * (c[0] - d[0]) + (c[1] - d[1]) * (b[0] - a[0]);
+        var numerator_y = (c[0] * d[1] - c[1] * d[0]) * (b[1] - a[1]) + (a[0] * b[1] - a[1] * b[0]) * (c[1] - d[1]);
+        var denominator_y = (b[0] - a[0]) * (d[1] - c[1]) + (d[0] - c[0]) * (a[1] - b[1]);
+        return [numerator_x / denominator_x, numerator_y / denominator_y];
+    }
+
     var findWheelCenter = function (path) {
         var wheelCenter = [];
-        for (var i = 0; i < path.length - 1; i++) {
-            wheelCenter.push(findPointOnDistanceFromLine(path[i], path[i + 1], roverWheelRadius));
+        wheelCenter.push([findPointOnDistanceFromLine(path[0], path[1], roverWheelRadius)]);
+        for (var i = 1; i < path.length - 1; i++) {
+            var angle = angleBetweenVectors2([path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]], [path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]]);
+            //console.log(angle * 180.0 / Math.PI);
+            var tmp = [];
+            var b = findPointOnDistanceFromLine(path[i], path[i - 1], roverWheelRadius);
+            var c = findPointOnDistanceFromLine(path[i], path[i + 1], roverWheelRadius);
+            if (angle > compareEpsilon) {
+                tmp.push(b, c, path[i]);
+            }
+            else if (angle < -compareEpsilon) {
+                var a = findPointOnDistanceFromLine(path[i - 1], path[i], roverWheelRadius);
+                var d = findPointOnDistanceFromLine(path[i + 1], path[i], roverWheelRadius);
+                tmp.push(findIntersectionLines(a, b, c, d));
+            }
+            wheelCenter.push(tmp);
         }
+        wheelCenter.push([findPointOnDistanceFromLine(path[path.length - 1], path[path.length - 2], roverWheelRadius)]);
         return wheelCenter
     }
 
@@ -1227,8 +1283,10 @@ function InitDemo() {
         var pos = roverContextPosition();
         var simplePath = findSimplifiedPath(path);
         var wheelCenter = findWheelCenter(simplePath);
+        //console.log(simplePath, wheelCenter);
+        //console.log(simplePath.length, wheelCenter.length);
         //simplePath.map(x => [x[0], x[1] + contextScale])
-        drawContext([[path, 'line'], [wheelCenter, 'scatter'], [simplePath, 'scatter']], pos);
+        drawContext([[path, 'line'], [wheelCenter, 'wheelCenter'], [simplePath, 'scatter']], pos);
     }
 
     workingContext();
@@ -1873,7 +1931,14 @@ function InitDemo() {
                     //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] + (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
                 }
 
+                console.log(cameraPosition);
+                cameraPosition = [roverPosition[0], roverPosition[1] + 2 * roverScale + roverCameraShift, roverPosition[2]];
+                console.log(cameraPosition);
+                console.log(targetPosition[1]);
+                //cameraPosition = roverPosition;
+
                 targetPosition[0] = res_1[0];
+                targetPosition[1] = cameraPosition[1];
                 targetPosition[2] = res_1[1];
 
                 cameraPitch = 0.0;
@@ -1939,7 +2004,11 @@ function InitDemo() {
                     //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] - (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
                 }
 
+                cameraPosition = [roverPosition[0], roverPosition[1] + 2 * roverScale + roverCameraShift, roverPosition[2]];
+
+
                 targetPosition[0] = res_1[0];
+                targetPosition[1] = cameraPosition[1];
                 targetPosition[2] = res_1[1];
 
                 cameraPitch = 0.0;

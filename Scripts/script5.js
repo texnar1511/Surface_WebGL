@@ -314,7 +314,7 @@ function InitDemo() {
     //
 
     var MODEL_SCALE = 10;
-    var pathEpsilon = 0.01;
+    var pathEpsilon = 1e-2;
 
     var redHeight = 1.0;//1.0
     var greenHeight = 0.5;//0.5
@@ -1037,7 +1037,7 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var ticks = 40;
+        var ticks = 20;
 
         var startX = rovPos[0] - ticks * rovSpd * forward[0];
         var startY = rovPos[2] - ticks * rovSpd * forward[2];
@@ -1140,9 +1140,24 @@ function InitDemo() {
         ctx.stroke();
     }
 
+    var drawWheelCenterScatter = function (a, lineWidth, fillStyle) {
+        for (var i = 0; i < a.length; i++) {
+            if (a[i].length == 1) {
+                ctx.fillStyle = fillStyle
+                ctx.fillRect(a[i][0][0] - lineWidth / 2, a[i][0][1] - lineWidth / 2, lineWidth, lineWidth);
+            }
+            else if (a[i].length == 3) {
+                ctx.fillStyle = "#ffff00";
+                ctx.fillRect(a[i][0][0] - lineWidth / 2, a[i][0][1] - lineWidth / 2, lineWidth, lineWidth);
+                ctx.fillRect(a[i][1][0] - lineWidth / 2, a[i][1][1] - lineWidth / 2, lineWidth, lineWidth);
+                ctx.fillRect(a[i][2][0] - lineWidth / 2, a[i][2][1] - lineWidth / 2, lineWidth, lineWidth);
+            }
+        }
+    }
+
     var contextScale = 4;
 
-    var drawContext = function (paths, pos) {
+    var drawContext = function (paths, pos, h) {
         ctx.resetTransform();
         //console.log(pos);
         //var pathH = path.map(x => x[1]);
@@ -1167,18 +1182,21 @@ function InitDemo() {
 
         //drawArray(path);
 
-        var styles = ["#000000", "#ff0000", "#00ff00"];
-        var lineWidths = [lineWidth * 0.5, lineWidth * 0.5, lineWidth * 1.0];
+        //var styles = ["#000000", "#ff0000", "#007700", "#1b98ee"];
+        //var lineWidths = [lineWidth * 0.1, lineWidth * 0., lineWidth * 1.5, lineWidth * 1.5];
 
         for (var i = 0; i < paths.length; i++) {
             if (paths[i][1] == 'line') {
-                drawArray(paths[i][0], lineWidths[i], styles[i]);
+                drawArray(paths[i][0], paths[i][2], paths[i][3]);
             }
             else if (paths[i][1] == 'scatter') {
-                drawScatter(paths[i][0], lineWidths[i], styles[i]);
+                drawScatter(paths[i][0], paths[i][2], paths[i][3]);
             }
             else if (paths[i][1] == 'wheelCenter') {
-                drawWheelCenter(paths[i][0], lineWidths[i], styles[i]);
+                drawWheelCenter(paths[i][0], paths[i][2], paths[i][3]);
+            }
+            else if (paths[i][1] == 'wheelCenterScatter') {
+                drawWheelCenterScatter(paths[i][0], paths[i][2], paths[i][3]);
             }
         }
 
@@ -1189,6 +1207,17 @@ function InitDemo() {
         ctx.lineTo(pos[0], pos[1] + 2 * contextScale);
         //ctx.arc(pos[0], pos[1], roverWheelRadius, 0, Math.PI);
         ctx.stroke();
+
+        var centerWidth = 1.0;
+
+        ctx.strokeStyle = "#00ff00";
+        ctx.fillStyle = "#00ff00";
+        ctx.lineWidth = 0.4;
+        ctx.beginPath();
+        ctx.fillRect(pos[0] - centerWidth / 2, h - centerWidth / 2, centerWidth, centerWidth);
+        ctx.arc(pos[0], h, roverWheelRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+
         ctx.strokeStyle = "#000000";
     }
 
@@ -1218,8 +1247,9 @@ function InitDemo() {
         return Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]);
     }
 
-    var compareEpsilon = 1e-1;
+    var compareEpsilon = 1e-10;
     var roverWheelRadius = 10.0;
+    var roverWheelDistance = 30.0;
 
     //console.log(compareEpsilon);
 
@@ -1278,15 +1308,82 @@ function InitDemo() {
 
     //console.log(roverBackForwardPath());
 
+    var findYByXFromLine = function (x, a, b) {
+        //console.log(x, a, b);
+        return a[1] + (x - a[0]) * (b[1] - a[1]) / (b[0] - a[0]);
+    }
+
+    var findYByXFromCircle = function (x, c, r) {
+        //console.log(x, c, r, c[1] + Math.sqrt(r * r - (x - c[0]) * (x - c[0])));
+        return c[1] + Math.sqrt(r * r - (x - c[0]) * (x - c[0]));
+    }
+
+    var findYByXFromWheelCenter = function (x, wheelCenter) {
+        var heights = [];
+        for (var i = 0; i < wheelCenter.length - 1; i++) {
+            if (wheelCenter[i].length == 1) {
+                var a = Math.min(wheelCenter[i][0][0], wheelCenter[i + 1][0][0]);
+                var b = Math.max(wheelCenter[i][0][0], wheelCenter[i + 1][0][0]);
+                if (a <= x && x <= b) {
+                    //console.log(wheelCenter[i][0], wheelCenter[i + 1][0]);
+                    var h = findYByXFromLine(x, wheelCenter[i][0], wheelCenter[i + 1][0]);
+                    heights.push(h);
+                    //console.log("check", findYByXFromLine(x, wheelCenter[i][0], wheelCenter[i + 1][0]));
+                }
+            }
+            else if (wheelCenter[i].length == 3) {
+                //circle
+                var a = Math.min(wheelCenter[i][0][0], wheelCenter[i][1][0]);
+                var b = Math.max(wheelCenter[i][0][0], wheelCenter[i][1][0]);
+                //console.log(a, x, b);
+                if (a <= x && x <= b) {
+                    //console.log(a, x, b);
+                    var h = findYByXFromCircle(x, wheelCenter[i][2], roverWheelRadius);
+                    //console.log(h);
+                    if (h) {
+                        heights.push(h);
+                    }
+
+                    //heights.push(h);
+                }
+                //line
+                var a = Math.min(wheelCenter[i][1][0], wheelCenter[i + 1][0][0]);
+                var b = Math.max(wheelCenter[i][1][0], wheelCenter[i + 1][0][0]);
+                if (a <= x && x <= b) {
+                    //console.log(wheelCenter[i][0], wheelCenter[i + 1][0]);
+                    var h = findYByXFromLine(x, wheelCenter[i][1], wheelCenter[i + 1][0]);
+                    heights.push(h);
+                    //console.log("check", findYByXFromLine(x, wheelCenter[i][0], wheelCenter[i + 1][0]));
+                }
+            }
+        }
+        console.log(heights);
+        return Math.max.apply(Math, heights);
+    }
+
     var workingContext = function () {
         var path = roverBackForwardPath();
         var pos = roverContextPosition();
         var simplePath = findSimplifiedPath(path);
         var wheelCenter = findWheelCenter(simplePath);
-        //console.log(simplePath, wheelCenter);
+        //console.log(pos);
+        //console.log(wheelCenter);
+        var h = findYByXFromWheelCenter(pos[0], wheelCenter);
+        //ctx.arc()
+        //console.log(simplePath);
         //console.log(simplePath.length, wheelCenter.length);
         //simplePath.map(x => [x[0], x[1] + contextScale])
-        drawContext([[path, 'line'], [wheelCenter, 'wheelCenter'], [simplePath, 'scatter']], pos);
+        //"#000000", "#ff0000", "#007700", "#1b98ee"
+        //lineWidth * 0.1, lineWidth * 0., lineWidth * 1.5, lineWidth * 1.5
+
+        var lineWidth = 3 / contextScale;
+
+        drawContext([
+            [path, "line", lineWidth * 0.4, "#000000"],
+            [wheelCenter, "wheelCenter", lineWidth * 0.4, "#ff0000"],
+            [simplePath, "scatter", lineWidth * 1.5, "#007700"],
+            [wheelCenter, "wheelCenterScatter", lineWidth * 1.5, "#1b98ee"]],
+            pos, h);
     }
 
     workingContext();
@@ -1931,10 +2028,10 @@ function InitDemo() {
                     //boxVertices[offset * 6 * 2 + 6 * i + 2] = roverPosition[2] + (x - roverPosition[0]) * Math.sin(roverSensitivity) + (y - roverPosition[2]) * Math.cos(roverSensitivity);
                 }
 
-                console.log(cameraPosition);
+                //console.log(cameraPosition);
                 cameraPosition = [roverPosition[0], roverPosition[1] + 2 * roverScale + roverCameraShift, roverPosition[2]];
-                console.log(cameraPosition);
-                console.log(targetPosition[1]);
+                //console.log(cameraPosition);
+                //console.log(targetPosition[1]);
                 //cameraPosition = roverPosition;
 
                 targetPosition[0] = res_1[0];

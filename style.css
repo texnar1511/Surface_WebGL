@@ -63,3 +63,14 @@
     display: block;
     border: 1px solid black;
 }
+
+#info2 {
+    white-space: pre-wrap;
+    position: absolute;
+    top: 0;
+    left: 0;
+    /*user-select: none;*/
+    pointer-events: none;
+    z-index: 1;
+    color: black;
+}

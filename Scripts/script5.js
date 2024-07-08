@@ -1037,7 +1037,7 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var ticks = 20;
+        var ticks = 40;
 
         var startX = rovPos[0] - ticks * rovSpd * forward[0];
         var startY = rovPos[2] - ticks * rovSpd * forward[2];
@@ -1108,14 +1108,14 @@ function InitDemo() {
     }
 
     var drawScatter = function (a, lineWidth, fillStyle) {
-        ctx.fillStyle = "#0000ff";
-        ctx.fillRect(a[0][0] - lineWidth / 2, a[0][1] - lineWidth / 2, lineWidth, lineWidth);
+        //ctx.fillStyle = "#0000ff";
+        //ctx.fillRect(a[0][0] - lineWidth / 2, a[0][1] - lineWidth / 2, lineWidth, lineWidth);
         ctx.fillStyle = fillStyle
-        for (var i = 1; i < a.length - 1; i++) {
+        for (var i = 0; i < a.length; i++) {
             ctx.fillRect(a[i][0] - lineWidth / 2, a[i][1] - lineWidth / 2, lineWidth, lineWidth);
         }
-        ctx.fillStyle = "#00ffff";
-        ctx.fillRect(a[a.length - 1][0] - lineWidth / 2, a[a.length - 1][1] - lineWidth / 2, lineWidth, lineWidth);
+        //ctx.fillStyle = "#00ffff";
+        //ctx.fillRect(a[a.length - 1][0] - lineWidth / 2, a[a.length - 1][1] - lineWidth / 2, lineWidth, lineWidth);
     }
 
     var drawWheelCenter = function (a, lineWidth, strokeStyle) {
@@ -1155,9 +1155,47 @@ function InitDemo() {
         }
     }
 
-    var contextScale = 4;
+    var contextScale = 3;
 
-    var drawContext = function (paths, pos, h) {
+    var drawWheels = function (wheels) {
+        var centerWidth = 1.0;
+        ctx.strokeStyle = "#ff00ff";
+        ctx.lineWidth = 0.3;
+        ctx.beginPath();
+        //ctx.moveTo(wheels[0][0], wheels[0][1])
+        for (var i = 0; i < wheels.length; i++) {
+            if (i % 2) {
+                ctx.lineTo(wheels[i][0], wheels[i][1]);
+            }
+            else {
+                ctx.moveTo(wheels[i][0], wheels[i][1]);
+            }
+            //ctx.lineTo(wheels[i][0],)
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = "#00ff00";
+        ctx.lineWidth = 0.3;
+        ctx.beginPath();
+        //ctx.moveTo(wheels[0][0], wheels[0][1])
+        for (var i = 0; i < wheels.length; i++) {
+            ctx.moveTo(wheels[i][0] + roverWheelRadius, wheels[i][1]);
+            ctx.arc(wheels[i][0], wheels[i][1], roverWheelRadius, 0, 2 * Math.PI);
+            //ctx.lineTo(wheels[i][0],)
+        }
+        ctx.stroke();
+
+        //ctx.strokeStyle = "#00ff00";
+        //ctx.fillStyle = "#00ff00";
+        //ctx.lineWidth = 0.1;
+        //ctx.beginPath();
+        //ctx.fillRect(pos[0] - centerWidth / 2, h - centerWidth / 2, centerWidth, centerWidth);
+        //ctx.arc(pos[0], h, roverWheelRadius, 0, 2 * Math.PI);
+        //ctx.arc(pos[0], h, roverWheelDistance, 0, 2 * Math.PI);
+        //ctx.stroke();
+    }
+
+    var drawContext = function (paths, pos, wheels) {
         ctx.resetTransform();
         //console.log(pos);
         //var pathH = path.map(x => x[1]);
@@ -1186,16 +1224,16 @@ function InitDemo() {
         //var lineWidths = [lineWidth * 0.1, lineWidth * 0., lineWidth * 1.5, lineWidth * 1.5];
 
         for (var i = 0; i < paths.length; i++) {
-            if (paths[i][1] == 'line') {
+            if (paths[i][1] == "line") {
                 drawArray(paths[i][0], paths[i][2], paths[i][3]);
             }
-            else if (paths[i][1] == 'scatter') {
+            else if (paths[i][1] == "scatter") {
                 drawScatter(paths[i][0], paths[i][2], paths[i][3]);
             }
-            else if (paths[i][1] == 'wheelCenter') {
+            else if (paths[i][1] == "wheelCenter") {
                 drawWheelCenter(paths[i][0], paths[i][2], paths[i][3]);
             }
-            else if (paths[i][1] == 'wheelCenterScatter') {
+            else if (paths[i][1] == "wheelCenterScatter") {
                 drawWheelCenterScatter(paths[i][0], paths[i][2], paths[i][3]);
             }
         }
@@ -1208,16 +1246,18 @@ function InitDemo() {
         //ctx.arc(pos[0], pos[1], roverWheelRadius, 0, Math.PI);
         ctx.stroke();
 
-        var centerWidth = 1.0;
+        drawWheels(wheels);
 
-        ctx.strokeStyle = "#00ff00";
-        ctx.fillStyle = "#00ff00";
-        ctx.lineWidth = 0.1;
-        ctx.beginPath();
-        ctx.fillRect(pos[0] - centerWidth / 2, h - centerWidth / 2, centerWidth, centerWidth);
-        ctx.arc(pos[0], h, roverWheelRadius, 0, 2 * Math.PI);
+        //var centerWidth = 1.0;
+
+        //ctx.strokeStyle = "#00ff00";
+        //ctx.fillStyle = "#00ff00";
+        //ctx.lineWidth = 0.1;
+        //ctx.beginPath();
+        //ctx.fillRect(pos[0] - centerWidth / 2, h - centerWidth / 2, centerWidth, centerWidth);
+        //ctx.arc(pos[0], h, roverWheelRadius, 0, 2 * Math.PI);
         //ctx.arc(pos[0], h, roverWheelDistance, 0, 2 * Math.PI);
-        ctx.stroke();
+        //ctx.stroke();
 
         ctx.strokeStyle = "#000000";
     }
@@ -1397,7 +1437,11 @@ function InitDemo() {
         return (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]);
     }
 
-    var EPS = 1e-10;
+    var distanceBetweenVectors = function (a, b) {
+        return Math.sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]));
+    }
+
+    var EPS = 1e-8;
 
     var findIntersectionLineCircle = function (x1, x2, x0, r) {
         var a = x2[1] - x1[1];
@@ -1470,7 +1514,7 @@ function InitDemo() {
 
     var findAnotherWheelByDistance = function (wheel1, wheelCenter, d, back) {
         var ans = [];
-        //ctx.arc(wheel1[0], wheel1[1],)
+        //ctx.arc(wheel1[0], wheel1[1]);
         for (var i = 0; i < wheelCenter.length - 1; i++) {
             if (wheelCenter[i].length == 1) {
                 var d1 = distanceBetweenVectorsSquared(wheel1, wheelCenter[i][0]);
@@ -1478,12 +1522,28 @@ function InitDemo() {
                 if (d2 <= d * d && d * d <= d1 || d1 <= d * d && d * d <= d2) {
                     var pts = findIntersectionLineCircle(wheelCenter[i][0], wheelCenter[i + 1][0], wheel1, d);
                     if (pts.length == 1) {
-                        ans.push(pts[0]);
+                        if (back && pts[0][0] <= wheel1[0] || !back && wheel1[0] <= pts[0][0]) {
+                            if (Math.abs(distanceBetweenVectors(wheelCenter[i][0], wheelCenter[i + 1][0]) - distanceBetweenVectors(pts[0], wheelCenter[i][0]) - distanceBetweenVectors(pts[0], wheelCenter[i + 1][0])) < EPS) {
+                                ans.push(pts[0]);
+                            }
+                        }
+                        //console.log("line", pts[0]);\
                     }
                     else if (pts.length == 2) {
-                        var index = back ? (pts[0][0] < pts[1][0] ? 0 : 1) : (pts[0][0] < pts[1][0] ? 1 : 0);
+                        if (back && pts[0][0] <= wheel1[0] || !back && wheel1[0] <= pts[0][0]) {
+                            if (Math.abs(distanceBetweenVectors(wheelCenter[i][0], wheelCenter[i + 1][0]) - distanceBetweenVectors(pts[0], wheelCenter[i][0]) - distanceBetweenVectors(pts[0], wheelCenter[i + 1][0])) < EPS) {
+                                ans.push(pts[0]);
+                            }
+                        }
+                        if (back && pts[1][0] <= wheel1[0] || !back && wheel1[0] <= pts[1][0]) {
+                            if (Math.abs(distanceBetweenVectors(wheelCenter[i][0], wheelCenter[i + 1][0]) - distanceBetweenVectors(pts[1], wheelCenter[i][0]) - distanceBetweenVectors(pts[1], wheelCenter[i + 1][0])) < EPS) {
+                                ans.push(pts[1]);
+                            }
+                        }
+                        //var index = back ? (pts[0][0] < pts[1][0] ? 0 : 1) : (pts[0][0] < pts[1][0] ? 1 : 0);
                         //console.log(index);
-                        ans.push(pts[index]);
+                        //ans.push(pts[index]);
+                        //console.log("line", pts[index]);
                     }
                 }
             }
@@ -1500,10 +1560,16 @@ function InitDemo() {
                     var pts = findIntersectionCircles(wheelCenter[i][2], roverWheelRadius, wheel1, d);
                     //console.log('circles intersects:', pts);
                     if (pts.length == 1) {
-                        ans.push(pts[0]);
+                        if (back && pts[0][0] <= wheel1[0] || !back && wheel1[0] <= pts[0][0]) {
+                            ans.push(pts[0]);
+                        }
                     }
                     else if (pts.length == 2) {
-                        if (back) {
+                        if ((back && pts[0][0] <= wheel1[0] || !back && wheel1[0] <= pts[0][0]) && pts[0][1] >= Math.min(wheelCenter[i][0][1], wheelCenter[i][1][1])) {
+                            ans.push(pts[0]);
+                        }
+                        if ((back && pts[1][0] <= wheel1[0] || !back && wheel1[0] <= pts[1][0]) && pts[1][1] >= Math.min(wheelCenter[i][0][1], wheelCenter[i][1][1])) {
+                            ans.push(pts[1]);
                         }
                     }
                 }
@@ -1513,12 +1579,26 @@ function InitDemo() {
                 if (d2 <= d * d && d * d <= d1 || d1 <= d * d && d * d <= d2) {
                     var pts = findIntersectionLineCircle(wheelCenter[i][1], wheelCenter[i + 1][0], wheel1, d);
                     if (pts.length == 1) {
-                        ans.push(pts[0]);
+                        if (back && pts[0][0] <= wheel1[0] || !back && wheel1[0] <= pts[0][0]) {
+                            if (Math.abs(distanceBetweenVectors(wheelCenter[i][1], wheelCenter[i + 1][0]) - distanceBetweenVectors(pts[0], wheelCenter[i][1]) - distanceBetweenVectors(pts[0], wheelCenter[i + 1][0])) < EPS) {
+                                ans.push(pts[0]);
+                            }
+                        }
                     }
                     else if (pts.length == 2) {
-                        var index = back ? (pts[0][0] < pts[1][0] ? 0 : 1) : (pts[0][0] < pts[1][0] ? 1 : 0);
+                        if (back && pts[0][0] <= wheel1[0] || !back && wheel1[0] <= pts[0][0]) {
+                            if (Math.abs(distanceBetweenVectors(wheelCenter[i][1], wheelCenter[i + 1][0]) - distanceBetweenVectors(pts[0], wheelCenter[i][1]) - distanceBetweenVectors(pts[0], wheelCenter[i + 1][0])) < EPS) {
+                                ans.push(pts[0]);
+                            }
+                        }
+                        if (back && pts[1][0] <= wheel1[0] || !back && wheel1[0] <= pts[1][0]) {
+                            if (Math.abs(distanceBetweenVectors(wheelCenter[i][1], wheelCenter[i + 1][0]) - distanceBetweenVectors(pts[1], wheelCenter[i][1]) - distanceBetweenVectors(pts[1], wheelCenter[i + 1][0])) < EPS) {
+                                ans.push(pts[1]);
+                            }
+                        }
+                        //var index = back ? (pts[0][0] < pts[1][0] ? 0 : 1) : (pts[0][0] < pts[1][0] ? 1 : 0);
                         //console.log(index);
-                        ans.push(pts[index]);
+                        //ans.push(pts[index]);
                     }
                 }
             }
@@ -1537,10 +1617,18 @@ function InitDemo() {
         //wheelCenter = fixWheelCenter(wheelCenter);
         //console.log(wheelCenter.length);
         //wheelCenter.sort((a, b) => a[0][0] < b[0][0]);
-        //console.log(pos);
+        //console.log(pos);s
         //console.log(wheelCenter);
+
         var h = findYByXFromWheelCenter(pos[0], wheelCenter);
-        //findAnotherWheelByDistance([pos[0], h], wheelCenter, roverWheelDistance, true);
+        var wheel1 = [pos[0], h];
+
+        var tmpWheel2 = findAnotherWheelByDistance(wheel1, wheelCenter, roverWheelDistance, true);
+
+        console.log(tmpWheel2);
+        //var wheel2 = tmpWheel2[0];
+        //console.log(tmpWheel2.sort((a, b) => a[1] <= b[1]));
+        var wheel2 = tmpWheel2.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
         //ctx.arc()
         //console.log(simplePath);
         //console.log(simplePath.length, wheelCenter.length);
@@ -1555,12 +1643,15 @@ function InitDemo() {
             [wheelCenter, "wheelCenter", lineWidth * 0.1, "#ff0000"],
             [simplePath, "scatter", lineWidth * 1.5, "#007700"],
             [wheelCenter, "wheelCenterScatter", lineWidth * 1.5, "#1b98ee"]],
-            pos, h);
+            //[tmpWheel2, "scatter", lineWidth * 3, "#ff00ff"]],
+            pos, [wheel1, wheel2]);
 
         document.getElementById('info2').innerHTML =
             `pos: ${pos.map(x => x.toFixed(3))}
-wheel_1: ${pos[0].toFixed(3)}, ${h.toFixed(3)}
-            `;
+wheel_1: ${wheel1.map(x => x.toFixed(3))}
+wheel_2: ${wheel2.map(x => x.toFixed(3))}
+d(w_1, w_2): ${distanceBetweenVectors(wheel1, wheel2).toFixed(3)}
+tmpWheel2.length: ${tmpWheel2.length}`;
     }
 
     workingContext();

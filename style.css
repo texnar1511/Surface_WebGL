@@ -42,7 +42,7 @@
     white-space: pre-wrap;
     position: absolute;
     top: 0;
-    left: 0;
+    left: 0.5%;
     /*user-select: none;*/
     pointer-events: none;
     z-index: 1;
@@ -68,7 +68,18 @@
     white-space: pre-wrap;
     position: absolute;
     top: 0;
-    left: 0;
+    left: 0.5%;
+    /*user-select: none;*/
+    pointer-events: none;
+    z-index: 1;
+    color: black;
+}
+
+#info3 {
+    white-space: pre-wrap;
+    position: absolute;
+    top: 0;
+    left: 70%;
     /*user-select: none;*/
     pointer-events: none;
     z-index: 1;

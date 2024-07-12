@@ -869,7 +869,7 @@ function InitDemo() {
 
     //console.log(roverPosition);
     //console.log(roverTargetPosition);
-    var roverSpeed = 2.0;
+    var roverSpeed = 4.0;
     var roverSensitivity = 0.2;
 
     var aspectRatio = canvas.clientWidth / canvas.clientHeight;
@@ -1040,15 +1040,15 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var forwardTicks = 20;
-        var backwardTicks = 100;
+        var forwardTicks = 50;
+        var backwardTicks = 200;
 
-        var startX = rovPos[0] - backwardTicks * rovSpd * forward[0];
-        var startY = rovPos[2] - backwardTicks * rovSpd * forward[2];
+        var startX = rovPos[0] - backwardTicks * forward[0]; // * rovSpd
+        var startY = rovPos[2] - backwardTicks * forward[2]; // * rovSpd
         //console.log(startX, startY);
 
-        var endX = rovPos[0] + forwardTicks * rovSpd * forward[0];
-        var endY = rovPos[2] + forwardTicks * rovSpd * forward[2];
+        var endX = rovPos[0] + forwardTicks * forward[0]; // * rovSpd
+        var endY = rovPos[2] + forwardTicks * forward[2]; // * rovSpd
         //console.log(endX, endY);
 
         var ans = [];
@@ -1239,7 +1239,35 @@ function InitDemo() {
         }
     }
 
-    var drawContext = function (paths, pos, wheels, suspensions, surfs, lineWidth) {
+    var drawReactions = function (reacts, surfs, lineWidth) {
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = "#ff0000";
+        ctx.beginPath();
+        for (var i = 0; i < surfs.length; i++) {
+            ctx.moveTo(surfs[i][0], surfs[i][1]);
+            ctx.lineTo(surfs[i][0] + reacts[i][0], surfs[i][1] + reacts[i][1]);
+        }
+        ctx.stroke();
+    }
+
+    var drawNormals = function (normals, surfs, lineWidth) {
+        ctx.lineWidth = lineWidth;
+        //ctx.strokeStyle = "#000000";
+        for (var i = 0; i < normals.length; i++) {
+            ctx.strokeStyle = "#0000ff";
+            ctx.beginPath();
+            ctx.moveTo(surfs[i][0], surfs[i][1]);
+            ctx.lineTo(surfs[i][0] + normals[i][0][0], surfs[i][1] + normals[i][0][1]);
+            ctx.stroke();
+            ctx.strokeStyle = "#00ff00";
+            ctx.beginPath();
+            ctx.moveTo(surfs[i][0], surfs[i][1]);
+            ctx.lineTo(surfs[i][0] + normals[i][1][0], surfs[i][1] + normals[i][1][1]);
+            ctx.stroke();
+        }
+    }
+
+    var drawContext = function (paths, pos, wheels, suspensions, surfs, reacts, normals, lineWidth) {
         ctx.resetTransform();
         //console.log(pos);
         //var pathH = path.map(x => x[1]);
@@ -1300,6 +1328,10 @@ function InitDemo() {
 
         drawScatter(surfs, lineWidth * 2.0, "#ff0000");
 
+        drawReactions(reacts, surfs, lineWidth * 0.5);
+
+        drawNormals(normals, surfs, lineWidth * 0.5);
+
         //drawResFinding(resFinding);
 
         //var centerWidth = 1.0;
@@ -1322,6 +1354,11 @@ function InitDemo() {
             ans += a[i] * a[i];
         }
         return Math.sqrt(ans);
+    }
+
+    var normalizeVector = function (a) {
+        var n = normaVector(a);
+        return a.map(x => x / n);
     }
 
     var dotProductVectors = function (a, b) {
@@ -1500,7 +1537,7 @@ function InitDemo() {
         return Math.sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]));
     }
 
-    var EPS = 1e-1;
+    var EPS = 1e-7;
 
     var findIntersectionLineCircle = function (x1, x2, x0, r) {
         var a = x2[1] - x1[1];
@@ -1666,6 +1703,7 @@ function InitDemo() {
             //ans.push([wheel[0] - roverWheelDistance, wheel[1]]);
             ans.push(wheelCenter[0][0]);
         }
+        ans = ans.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
         return ans;
     }
 
@@ -1702,7 +1740,8 @@ function InitDemo() {
                     var dist = 0;
                     while (dist <= n) {
                         var wheel4 = wheelCenter[i][0].map((x, idx) => x + vec[idx] * dist / n);
-                        var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false).sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
+                        var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false);//.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
+                        //console.log(wheel3);
                         var suspension2 = findSuspensionFromWheels(wheel3, wheel4);
                         //console.log(wheel3, wheel4, suspension2);
                         //tmpWheel2.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
@@ -1725,7 +1764,7 @@ function InitDemo() {
                     while (angle1 >= angle2) {
                         //console.log(angle1, angle2);
                         var wheel4 = [roverWheelRadius * Math.cos(angle1) + wheelCenter[i][2][0], roverWheelRadius * Math.sin(angle1) + wheelCenter[i][2][1]];
-                        var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false).sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
+                        var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false);//.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
                         var suspension2 = findSuspensionFromWheels(wheel3, wheel4);
                         //console.log(wheel4);
                         //console.log(distanceBetweenVectors(suspension1, suspension2));
@@ -1744,7 +1783,7 @@ function InitDemo() {
                     var dist = 0;
                     while (dist <= n) {
                         var wheel4 = wheelCenter[i][1].map((x, idx) => x + vec[idx] * dist / n);
-                        var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false).sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
+                        var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false);//.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
                         var suspension2 = findSuspensionFromWheels(wheel3, wheel4);
                         //console.log(wheel3, wheel4, suspension2);
                         //tmpWheel2.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
@@ -1761,7 +1800,7 @@ function InitDemo() {
         if (ans.length == 0) {
             //ans.push([[suspension1[0] - roverSuspensionsDistance + roverWheelDistance / 2, suspension1[1] - l], [suspension1[0] - roverSuspensionsDistance - roverWheelDistance / 2, suspension1[1] - l], [suspension1[0] - roverSuspensionsDistance, suspension1[1]]]);
             var wheel4 = wheelCenter[0][0];
-            var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false)
+            var wheel3 = findAnotherWheelByDistance(wheel4, wheelCenter, roverWheelDistance, false);
             ans.push([wheel3, wheel4, findSuspensionFromWheels(wheel3, wheel4)]);
         }
         //console.log(ans);
@@ -1783,7 +1822,7 @@ function InitDemo() {
         var d1 = distanceBetweenVectors(p, a);
         var d2 = distanceBetweenVectors(p, b);
         var d = distanceBetweenVectors(a, b);
-        return Math.abs(d - d1 - d2) < EPS
+        return Math.abs(d - d1 - d2) < EPS;
     }
 
     var findYByXFromPath = function (x, path) {
@@ -1832,6 +1871,18 @@ function InitDemo() {
         return ans;
     }
 
+    //var findNormSurface = function (surf, path) {
+    //    var ans = [];
+    //    for (var i = 0; i < path.length - 1; i++) {
+    //        if (checkIfPointOnInterval(surf, path[i], path[i + 1])) {
+    //            if (distanceBetweenVectors(surf, path[i]) < EPS) {
+    //            }
+    //            else if (distanceBetweenVectors(surf, path[i + 1]) < EPS) {
+    //            }
+    //        }
+    //    }
+    //}
+
     var workingContext = function () {
         var path = roverBackForwardPath();
         var pos = roverContextPosition();
@@ -1849,12 +1900,12 @@ function InitDemo() {
         var h = findYByXFromWheelCenter(pos[0], wheelCenter);
         var wheel1 = [pos[0], h];
 
-        var tmpWheel2 = findAnotherWheelByDistance(wheel1, wheelCenter, roverWheelDistance, true);
+        //var tmpWheel2 = findAnotherWheelByDistance(wheel1, wheelCenter, roverWheelDistance, true);
 
         //console.log(tmpWheel2);
         //var wheel2 = tmpWheel2[0];
         //console.log(tmpWheel2.sort((a, b) => a[1] <= b[1]));
-        var wheel2 = tmpWheel2.sort((a, b) => a[1] >= b[1] ? -1 : 1)[0];
+        var wheel2 = findAnotherWheelByDistance(wheel1, wheelCenter, roverWheelDistance, true);
 
         //var mid = wheel1.map((x, idx) => (x + wheel2[idx]) / 2);
         //var l = Math.sqrt(roverLegLength * roverLegLength - roverWheelDistance * roverWheelDistance / 4);
@@ -1888,10 +1939,10 @@ function InitDemo() {
 
         var centerMass = suspension1.map((x, idx) => (x + suspension2[idx]) / 2);
 
-        var R_1 = surf1.map((x, idx) => x - centerMass[idx]);
-        var R_2 = surf2.map((x, idx) => x - centerMass[idx]);
-        var R_3 = surf3.map((x, idx) => x - centerMass[idx]);
-        var R_4 = surf4.map((x, idx) => x - centerMass[idx]);
+        var R1 = surf1.map((x, idx) => x - centerMass[idx]);
+        var R2 = surf2.map((x, idx) => x - centerMass[idx]);
+        var R3 = surf3.map((x, idx) => x - centerMass[idx]);
+        var R4 = surf4.map((x, idx) => x - centerMass[idx]);
 
         var A1 = [[elasticity, 0], [0, elasticity]];
         var A2 = [[elasticity, 0], [0, elasticity]];
@@ -1906,52 +1957,94 @@ function InitDemo() {
         //"#000000", "#ff0000", "#007700", "#1b98ee"
         //lineWidth * 0.1, lineWidth * 0., lineWidth * 1.5, lineWidth * 1.5
 
-        console.log(
-            solveLinearSystem(
-                [ // N_1_x, N_1_y, N_2_x, N_2_y, N_3_x, N_3_y, N_4_x, N_4_y, Delta_1_x, Delta_1_y, Delta_2_x, Delta_2_y, Delta_3_x, Delta_3_y, Delta_4_x, Delta_4_y, delta_x, delta_y, gamma
-                    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // sum(N_i)+P=M w (x)
-                    [0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // sum(N_i)+P=M w (y)
-                    [1, 0, 0, 0, 0, 0, 0, 0, A1[1][0] * Math.sin(alpha) - A1[0][0] * Math.cos(alpha), A1[1][1] * Math.sin(alpha) - A1[0][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0, 0, 0], // N_1 = T A_1 Delta_1 (x)
-                    [0, 1, 0, 0, 0, 0, 0, 0, - A1[0][0] * Math.sin(alpha) - A1[1][0] * Math.cos(alpha), - A1[0][1] * Math.sin(alpha) - A1[1][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0, 0, 0], // N_1 = T A_1 Delta_1 (y)
-                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, A2[1][0] * Math.sin(alpha) - A2[0][0] * Math.cos(alpha), A2[1][1] * Math.sin(alpha) - A2[0][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0], // N_2 = T A_2 Delta_2 (x)
-                    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, - A2[0][0] * Math.sin(alpha) - A2[1][0] * Math.cos(alpha), - A2[0][1] * Math.sin(alpha) - A2[1][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0], // N_2 = T A_2 Delta_2 (y)
-                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, A3[1][0] * Math.sin(alpha) - A3[0][0] * Math.cos(alpha), A3[1][1] * Math.sin(alpha) - A3[0][1] * Math.cos(alpha), 0, 0, 0, 0, 0], // N_3 = T A_3 Delta_3 (x)
-                    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, - A3[0][0] * Math.sin(alpha) - A3[1][0] * Math.cos(alpha), - A3[0][1] * Math.sin(alpha) - A3[1][1] * Math.cos(alpha), 0, 0, 0, 0, 0], // N_3 = T A_3 Delta_3 (y)
-                    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, A4[1][0] * Math.sin(alpha) - A4[0][0] * Math.cos(alpha), A4[1][1] * Math.sin(alpha) - A4[0][1] * Math.cos(alpha), 0, 0, 0], // N_4 = T A_4 Delta_4 (x)
-                    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, - A4[0][0] * Math.sin(alpha) - A4[1][0] * Math.cos(alpha), - A4[0][1] * Math.sin(alpha) - A4[1][1] * Math.cos(alpha), 0, 0, 0], // N_4 = T A_4 Delta_4 (y)
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                ],
-                [
-                    0,
-                    roverMass * gravityAcceleration,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0
-                ]
-            )
-        );
+        var A = [ // N_1_x, N_1_y, N_2_x, N_2_y, N_3_x, N_3_y, N_4_x, N_4_y, Delta_1_x, Delta_1_y, Delta_2_x, Delta_2_y, Delta_3_x, Delta_3_y, Delta_4_x, Delta_4_y, delta_x, delta_y, gamma
+            [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // sum(N_i)+P=M w (x)
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // sum(N_i)+P=M w (y)
+            [1, 0, 0, 0, 0, 0, 0, 0, A1[1][0] * Math.sin(alpha) - A1[0][0] * Math.cos(alpha), A1[1][1] * Math.sin(alpha) - A1[0][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0, 0, 0], // N_1 = T A_1 Delta_1 (x)
+            [0, 1, 0, 0, 0, 0, 0, 0, - A1[0][0] * Math.sin(alpha) - A1[1][0] * Math.cos(alpha), - A1[0][1] * Math.sin(alpha) - A1[1][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0, 0, 0], // N_1 = T A_1 Delta_1 (y)
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, A2[1][0] * Math.sin(alpha) - A2[0][0] * Math.cos(alpha), A2[1][1] * Math.sin(alpha) - A2[0][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0], // N_2 = T A_2 Delta_2 (x)
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, - A2[0][0] * Math.sin(alpha) - A2[1][0] * Math.cos(alpha), - A2[0][1] * Math.sin(alpha) - A2[1][1] * Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0], // N_2 = T A_2 Delta_2 (y)
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, A3[1][0] * Math.sin(alpha) - A3[0][0] * Math.cos(alpha), A3[1][1] * Math.sin(alpha) - A3[0][1] * Math.cos(alpha), 0, 0, 0, 0, 0], // N_3 = T A_3 Delta_3 (x)
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, - A3[0][0] * Math.sin(alpha) - A3[1][0] * Math.cos(alpha), - A3[0][1] * Math.sin(alpha) - A3[1][1] * Math.cos(alpha), 0, 0, 0, 0, 0], // N_3 = T A_3 Delta_3 (y)
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, A4[1][0] * Math.sin(alpha) - A4[0][0] * Math.cos(alpha), A4[1][1] * Math.sin(alpha) - A4[0][1] * Math.cos(alpha), 0, 0, 0], // N_4 = T A_4 Delta_4 (x)
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, - A4[0][0] * Math.sin(alpha) - A4[1][0] * Math.cos(alpha), - A4[0][1] * Math.sin(alpha) - A4[1][1] * Math.cos(alpha), 0, 0, 0], // N_4 = T A_4 Delta_4 (y)
+            [0, 0, 0, 0, 0, 0, 0, 0, Math.cos(alpha), - Math.sin(alpha), 0, 0, 0, 0, 0, 0, 1, 0, - R1[0] * Math.sin(alpha) - R1[1] * Math.cos(alpha)], // delta + T T R_1 + T Delta_1 = surf_1 (x)
+            [0, 0, 0, 0, 0, 0, 0, 0, Math.sin(alpha), Math.cos(alpha), 0, 0, 0, 0, 0, 0, 0, 1, R1[0] * Math.cos(alpha) - R1[1] * Math.sin(alpha)], // delta + T T R_1 + T Delta_1 = surf_1 (y)
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Math.cos(alpha), - Math.sin(alpha), 0, 0, 0, 0, 1, 0, - R2[0] * Math.sin(alpha) - R2[1] * Math.cos(alpha)], // delta + T T R_2 + T Delta_2 = surf_2 (x)
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Math.sin(alpha), Math.cos(alpha), 0, 0, 0, 0, 0, 1, R2[0] * Math.cos(alpha) - R2[1] * Math.sin(alpha)], // delta + T T R_2 + T Delta_2 = surf_2 (y)
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Math.cos(alpha), - Math.sin(alpha), 0, 0, 1, 0, - R3[0] * Math.sin(alpha) - R3[1] * Math.cos(alpha)], // delta + T T R_3 + T Delta_3 = surf_3 (x)
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Math.sin(alpha), Math.cos(alpha), 0, 0, 0, 1, R3[0] * Math.cos(alpha) - R3[1] * Math.sin(alpha)], // delta + T T R_3 + T Delta_3 = surf_3 (y)
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Math.cos(alpha), - Math.sin(alpha), 1, 0, - R4[0] * Math.sin(alpha) - R4[1] * Math.cos(alpha)], // delta + T T R_4 + T Delta_4 = surf_4 (x)
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Math.sin(alpha), Math.cos(alpha), 0, 1, R4[0] * Math.cos(alpha) - R4[1] * Math.sin(alpha)], // delta + T T R_4 + T Delta_4 = surf_4 (y)
+            [- R1[0] * Math.sin(alpha) - R1[1] * Math.cos(alpha), R1[0] * Math.cos(alpha) - R1[1] * Math.sin(alpha), - R2[0] * Math.sin(alpha) - R2[1] * Math.cos(alpha), R2[0] * Math.cos(alpha) - R2[1] * Math.sin(alpha), - R3[0] * Math.sin(alpha) - R3[1] * Math.cos(alpha), R3[0] * Math.cos(alpha) - R3[1] * Math.sin(alpha), - R4[0] * Math.sin(alpha) - R4[1] * Math.cos(alpha), R4[0] * Math.cos(alpha) - R4[1] * Math.sin(alpha), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // sum( T R x N ) = 0
+        ];
+
+        var b = [
+            0,
+            roverMass * gravityAcceleration,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            surf1[0] - R1[0] * Math.cos(alpha) + R1[1] * Math.sin(alpha),
+            surf1[1] - R1[0] * Math.sin(alpha) - R1[1] * Math.cos(alpha),
+            surf2[0] - R2[0] * Math.cos(alpha) + R2[1] * Math.sin(alpha),
+            surf2[1] - R2[0] * Math.sin(alpha) - R2[1] * Math.cos(alpha),
+            surf3[0] - R3[0] * Math.cos(alpha) + R3[1] * Math.sin(alpha),
+            surf3[1] - R3[0] * Math.sin(alpha) - R3[1] * Math.cos(alpha),
+            surf4[0] - R4[0] * Math.cos(alpha) + R4[1] * Math.sin(alpha),
+            surf4[1] - R4[0] * Math.sin(alpha) - R4[1] * Math.cos(alpha),
+            0
+        ];
+
+        var dynamic = solveLinearSystem(A, b);
+
+        var N1 = [dynamic[0], dynamic[1]];
+        var N2 = [dynamic[2], dynamic[3]];
+        var N3 = [dynamic[4], dynamic[5]];
+        var N4 = [dynamic[6], dynamic[7]];
+
+        var NP1 = normalizeVector([wheel1[0] - surf1[0], wheel1[1] - surf1[1]]);
+        var NP2 = normalizeVector([wheel2[0] - surf2[0], wheel2[1] - surf2[1]]);
+        var NP3 = normalizeVector([wheel3[0] - surf3[0], wheel3[1] - surf3[1]]);
+        var NP4 = normalizeVector([wheel4[0] - surf4[0], wheel4[1] - surf4[1]]);
+
+        NP1 = [[NP1[1], -NP1[0]], NP1];
+        NP2 = [[NP2[1], -NP2[0]], NP2];
+        NP3 = [[NP3[1], -NP3[0]], NP3];
+        NP4 = [[NP4[1], -NP4[0]], NP4];
+
+        var invert1 = [[NP1[0][0], -NP1[0][1]], [-NP1[1][0], NP1[1][1]]];
+        var invert2 = [[NP2[0][0], -NP2[0][1]], [-NP2[1][0], NP2[1][1]]];
+        var invert3 = [[NP3[0][0], -NP3[0][1]], [-NP3[1][0], NP3[1][1]]];
+        var invert4 = [[NP4[0][0], -NP4[0][1]], [-NP4[1][0], NP4[1][1]]];
+
+        var N1_t = invert1[0][0] * N1[0] + invert1[0][1] * N1[1];
+        var N1_n = invert1[1][0] * N1[0] + invert1[1][1] * N1[1];
+        var N2_t = invert2[0][0] * N2[0] + invert2[0][1] * N2[1];
+        var N2_n = invert2[1][0] * N2[0] + invert2[1][1] * N2[1];
+        var N3_t = invert3[0][0] * N3[0] + invert3[0][1] * N3[1];
+        var N3_n = invert3[1][0] * N3[0] + invert3[1][1] * N3[1];
+        var N4_t = invert4[0][0] * N4[0] + invert4[0][1] * N4[1];
+        var N4_n = invert4[1][0] * N4[0] + invert4[1][1] * N4[1];
+
+        NP1[0] = NP1[0].map(x => x * 30);
+        NP1[1] = NP1[1].map(x => x * 30);
+        NP2[0] = NP2[0].map(x => x * 30);
+        NP2[1] = NP2[1].map(x => x * 30);
+        NP3[0] = NP3[0].map(x => x * 30);
+        NP3[1] = NP3[1].map(x => x * 30);
+        NP4[0] = NP4[0].map(x => x * 30);
+        NP4[1] = NP4[1].map(x => x * 30);
+
+        N1 = normalizeVector(N1).map(x => x * 30);
+        N2 = normalizeVector(N2).map(x => x * 30);
+        N3 = normalizeVector(N3).map(x => x * 30);
+        N4 = normalizeVector(N4).map(x => x * 30);
 
         var lineWidth = 2 / contextScale;
 
@@ -1961,7 +2054,7 @@ function InitDemo() {
             [simplePath, "scatter", lineWidth * 1.5, "#007700"],
             [wheelCenter, "wheelCenterScatter", lineWidth * 1.5, "#1b98ee"]],
             //[tmpWheel2, "scatter", lineWidth * 3, "#ff00ff"]],
-            pos, [wheel1, wheel2, wheel3, wheel4], [suspension1, suspension2], [surf1, surf2, surf3, surf4], lineWidth);
+            pos, [wheel1, wheel2, wheel3, wheel4], [suspension1, suspension2], [surf1, surf2, surf3, surf4], [N1, N2, N3, N4], [NP1, NP2, NP3, NP4], lineWidth);
 
         document.getElementById('info2').innerHTML =
             `pos: ${pos.map(x => x.toFixed(3))}
@@ -1976,6 +2069,13 @@ surf1: ${surf1.map(x => x.toFixed(3))}
 surf2: ${surf2.map(x => x.toFixed(3))}
 surf3: ${surf3.map(x => x.toFixed(3))}
 surf4: ${surf4.map(x => x.toFixed(3))}`;
+
+        document.getElementById("info3").innerHTML =
+            `k|N1_n| - |N1_t|: ${(elasticity * Math.abs(N1_n) - Math.abs(N1_t)).toFixed(3)}
+k|N2_n| - |N2_t|: ${(elasticity * Math.abs(N2_n) - Math.abs(N2_t)).toFixed(3)}
+k|N3_n| - |N3_t|: ${(elasticity * Math.abs(N3_n) - Math.abs(N3_t)).toFixed(3)}
+k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
+            `;
     }
 
     workingContext();

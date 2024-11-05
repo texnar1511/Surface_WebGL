@@ -438,7 +438,7 @@ function InitDemo() {
                 randomHeights[interI * heightRH + interJ + 1],
                 randomHeights[(interI + 1) * heightRH + interJ],
                 randomHeights[(interI + 1) * heightRH + interJ + 1],
-            ) * MODEL_SCALE + displacementMap[i * fieldHeight + j] * MODEL_SCALE * 2.0;
+            ) * MODEL_SCALE + displacementMap[i * fieldHeight + j] * MODEL_SCALE * 0.0;
 
             //console.log(tmpHeight);
 
@@ -567,11 +567,23 @@ function InitDemo() {
     boxVertices.push(roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 0.0);
     boxVertices.push(-roverScale, 2 * roverScale, roverScale, 0.0, 0.0, 0.0);
     boxVertices.push(-roverScale, 2 * roverScale, -roverScale, 0.0, 0.0, 0.0);
-    //forward vector
-    boxVertices.push(0, roverScale, 0, 0.0, 0.0, 0.0);
-    boxVertices.push(0, roverScale, 2 * roverScale, 0.0, 0.0, 0.0);
+    //forward vector(polygon)
 
-    var roverVerticesLength = 34;
+    var forward_vector_width = roverScale / 10;
+
+    //boxVertices.push(0, roverScale, 0, 1.0, 0.0, 1.0);
+    //boxVertices.push(0, roverScale, 5 * roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(forward_vector_width, roverScale, 0, 1.0, 0.0, 1.0);
+    boxVertices.push(forward_vector_width, roverScale, 5 * roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(- forward_vector_width, roverScale, 5 * roverScale, 1.0, 0.0, 1.0);
+    boxVertices.push(- forward_vector_width, roverScale, 0, 1.0, 0.0, 1.0);
+
+    boxVertices.push(forward_vector_width, roverScale, 0, 0.0, 0.0, 0.0);
+    boxVertices.push(forward_vector_width, roverScale, 5 * roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(- forward_vector_width, roverScale, 5 * roverScale, 0.0, 0.0, 0.0);
+    boxVertices.push(- forward_vector_width, roverScale, 0, 0.0, 0.0, 0.0);
+
+    var roverVerticesLength = 40;
 
     //console.log(boxVertices.slice(0, fieldWidth * fieldHeight * 6));
 
@@ -683,9 +695,18 @@ function InitDemo() {
     boxIndices.push(2 * offset + roverOffset + 1, 2 * offset + roverOffset + 5);
     boxIndices.push(2 * offset + roverOffset + 3, 2 * offset + roverOffset + 7);
 
-    boxIndices.push(2 * offset + roverOffset + 8, 2 * offset + roverOffset + 9);
+    //boxIndices.push(2 * offset + roverOffset + 8, 2 * offset + roverOffset + 9);
 
-    var roverLinesLength = 2 * 25;
+    var roverLinesLength = 2 * 6 * 4;
+
+    boxIndices.push(2 * offset + roverOffset + 8, 2 * offset + roverOffset + 9, 2 * offset + roverOffset + 10);
+    boxIndices.push(2 * offset + roverOffset + 8, 2 * offset + roverOffset + 10, 2 * offset + roverOffset + 11);
+
+    boxIndices.push(2 * offset + roverOffset + 12, 2 * offset + roverOffset + 13);
+    boxIndices.push(2 * offset + roverOffset + 13, 2 * offset + roverOffset + 14);
+    boxIndices.push(2 * offset + roverOffset + 14, 2 * offset + roverOffset + 15);
+    boxIndices.push(2 * offset + roverOffset + 15, 2 * offset + roverOffset + 12);
+
 
     //console.log(boxIndices);
     //function onlyUnique(value, index, array) {
@@ -1386,7 +1407,7 @@ function InitDemo() {
     var roverSuspensionsDistance = 100.0;
     var roverMass = 100.0;
     var gravityAcceleration = 10.0;
-    var elasticity = 5.0;
+    var elasticity = 1.0;
 
     //console.log(compareEpsilon);
 
@@ -1883,6 +1904,10 @@ function InitDemo() {
     //    }
     //}
 
+    var sigmoid = function (x, k = 1) {
+        return 1 / (1 + Math.exp(-x * k));
+    }
+
     var workingContext = function () {
         var path = roverBackForwardPath();
         var pos = roverContextPosition();
@@ -2070,15 +2095,52 @@ surf2: ${surf2.map(x => x.toFixed(3))}
 surf3: ${surf3.map(x => x.toFixed(3))}
 surf4: ${surf4.map(x => x.toFixed(3))}`;
 
+
+        var danger_1 = elasticity * Math.abs(N1_n) - Math.abs(N1_t);
+        var danger_2 = elasticity * Math.abs(N2_n) - Math.abs(N2_t);
+        var danger_3 = elasticity * Math.abs(N3_n) - Math.abs(N3_t);
+        var danger_4 = elasticity * Math.abs(N4_n) - Math.abs(N4_t);
+
+        var condition_check_1 = danger_1 > 0;
+        var condition_check_2 = danger_2 > 0;
+        var condition_check_3 = danger_3 > 0;
+        var condition_check_4 = danger_4 > 0;
+
+        var danger_norm_1 = Math.sqrt((elasticity * Math.abs(N1_n)) ** 2 + Math.abs(N1_t) ** 2);
+        var danger_norm_2 = Math.sqrt((elasticity * Math.abs(N2_n)) ** 2 + Math.abs(N2_t) ** 2);
+        var danger_norm_3 = Math.sqrt((elasticity * Math.abs(N3_n)) ** 2 + Math.abs(N3_t) ** 2);
+        var danger_norm_4 = Math.sqrt((elasticity * Math.abs(N4_n)) ** 2 + Math.abs(N4_t) ** 2);
+
+        var root_danger = 5;
+
+        var danger_level_1 = Math.pow((1 - danger_1 / danger_norm_1) / 2, 1 / root_danger);
+        var danger_level_2 = Math.pow((1 - danger_2 / danger_norm_2) / 2, 1 / root_danger);
+        var danger_level_3 = Math.pow((1 - danger_3 / danger_norm_3) / 2, 1 / root_danger);
+        var danger_level_4 = Math.pow((1 - danger_4 / danger_norm_4) / 2, 1 / root_danger);
+
+        //var danger_level_1 = sigmoid(-danger_1, 1e-2);
+        //var danger_level_2 = sigmoid(-danger_2, 1e-2);
+        //var danger_level_3 = sigmoid(-danger_3, 1e-2);
+        //var danger_level_4 = sigmoid(-danger_4, 1e-2);
+
+        var general_danger_level = Math.max(danger_level_1, danger_level_2, danger_level_3, danger_level_4);
+
         document.getElementById("info3").innerHTML =
-            `k|N1_n| - |N1_t|: ${(elasticity * Math.abs(N1_n) - Math.abs(N1_t)).toFixed(3)}
-k|N2_n| - |N2_t|: ${(elasticity * Math.abs(N2_n) - Math.abs(N2_t)).toFixed(3)}
-k|N3_n| - |N3_t|: ${(elasticity * Math.abs(N3_n) - Math.abs(N3_t)).toFixed(3)}
-k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
-            `;
+            `k|N1_n| - |N1_t|: ${danger_1.toFixed(3)} > 0 ${condition_check_1}
+k|N2_n| - |N2_t|: ${danger_2.toFixed(3)} > 0 ${condition_check_2}
+k|N3_n| - |N3_t|: ${danger_3.toFixed(3)} > 0 ${condition_check_3}
+k|N4_n| - |N4_t|: ${danger_4.toFixed(3)} > 0 ${condition_check_4}
+non-slippage: ${Boolean(condition_check_1 + condition_check_2 + condition_check_3 + condition_check_4)}
+level_1: ${(danger_level_1 * 100).toFixed(3)}%
+level_2: ${(danger_level_2 * 100).toFixed(3)}%
+level_3: ${(danger_level_3 * 100).toFixed(3)}%
+level_4: ${(danger_level_4 * 100).toFixed(3)}%
+`;
+
+        return general_danger_level;
     }
 
-    workingContext();
+    var general_danger_level = workingContext();
 
     //drawContext([findWheelCenter(roverBackForwardPath())], roverContextPosition());
 
@@ -2283,7 +2345,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
@@ -2360,7 +2422,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2417,7 +2479,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2472,7 +2534,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2593,7 +2655,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2680,7 +2742,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2755,7 +2817,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2825,7 +2887,7 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                workingContext();
+                general_danger_level = workingContext();
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -3321,7 +3383,8 @@ k|N4_n| - |N4_t|: ${(elasticity * Math.abs(N4_n) - Math.abs(N4_t)).toFixed(3)}
         }
 
         document.getElementById('information').innerHTML =
-            `cameraYaw: ${cameraYaw.toFixed(1)}
+            `danger level: ${(general_danger_level * 100).toFixed(3)}%
+cameraYaw: ${cameraYaw.toFixed(1)}
 cameraPitch: ${cameraPitch.toFixed(1)}
 camera: ${cameraPosition.map(x => x.toFixed(3))}
 camera forward: ${check1.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check1).toFixed(3)}
@@ -3330,8 +3393,7 @@ rover forward: ${check2.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check2).to
 scale: ${MODEL_SCALE}
 maxHeight: ${maxHeight.toFixed(3)}
 minHeight: ${minHeight.toFixed(3)}
-roverMode: ${roverMode}
-danger: true`;
+roverMode: ${roverMode}`;
 
         //i: ${ i } j: ${ j }
         //res_i: ${ res_i.toFixed(3) } res_j: ${ res_j.toFixed(3) }
@@ -3427,10 +3489,14 @@ danger: true`;
         gl.useProgram(program1);
         gl.drawElements(gl.TRIANGLES, trianglesLength, indexType, 0);
         gl.useProgram(program2);
-        gl.drawElements(gl.LINES, linesLength, indexType, 4 * trianglesLength); //multiple by indexType size in bytes uint is 32 bits -> 4 bytes
+        gl.drawElements(gl.LINES, linesLength, indexType, 4 * trianglesLength); //multiple by indexType size in bytes: uint is 32 bits -> 4 bytes
         gl.drawElements(gl.TRIANGLES, roverLength, indexType, 4 * (trianglesLength + linesLength));
+        //gl.lineWidth(1.0);
         gl.drawElements(gl.LINES, roverLinesLength, indexType, 4 * (trianglesLength + linesLength + roverLength));
+        //gl.lineWidth(0.1);
         //gl.drawElements(gl.LINES, linesLength, gl.UNSIGNED_SHORT, 20);
+        gl.drawElements(gl.TRIANGLES, 6, indexType, 4 * (trianglesLength + linesLength + roverLength + roverLinesLength));
+        gl.drawElements(gl.LINES, 8, indexType, 4 * (trianglesLength + linesLength + roverLength + roverLinesLength + 6));
         requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);

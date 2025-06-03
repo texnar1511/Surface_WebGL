@@ -1,3 +1,5 @@
+//import * as ort from 'onnxruntime-web';
+
 var vertexShaderText =
     `
         precision mediump float;
@@ -17,6 +19,8 @@ var vertexShaderText =
 
         varying vec4 position;
 
+        varying vec3 nPosition;
+
         float random(vec2 st)
         {
             return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
@@ -31,7 +35,11 @@ var vertexShaderText =
             fragColor = vertColor;
             //fragNormal = (mModel * vec4(vertNormal, 0.0)).xyz;
             fragNormal = vertNormal;
+            
             gl_Position = mProj * mView * mModel * vec4(vertPosition, 1.0);
+            
+            nPosition = vec3(mModel * vec4(vertPosition, 1.0));
+            
             //gl_Position.y += rnd;
             position = gl_Position;
             height = vertPosition.y;
@@ -57,6 +65,8 @@ var fragmentShaderText1 =
         varying float height;
 
         varying vec4 position;
+
+        varying vec3 nPosition;
 
         vec3 getColor(float f)
         {
@@ -128,6 +138,8 @@ var fragmentShaderText1 =
 
 var fragmentShaderText2 =
     `
+        #extension GL_OES_standard_derivatives : enable
+
         precision mediump float;
 
         varying vec3 fragColor;
@@ -135,6 +147,8 @@ var fragmentShaderText2 =
         varying vec4 position;
 
         varying vec3 fragNormal;
+
+        varying vec3 nPosition;
 
         void main()
         {
@@ -144,7 +158,17 @@ var fragmentShaderText2 =
 
             //vec4 texel = texture2D()
 
-            gl_FragColor = vec4(fragColor, 1.0);
+            vec3 dx = dFdx(nPosition);
+            vec3 dy = dFdy(nPosition);
+
+            vec3 normal = normalize(cross(dx, dy));
+
+            vec3 lightDirection = normalize(vec3(-1.0, 1.0, -1.0));
+
+            float brightness = max(dot(lightDirection, normal), 0.0);
+
+            gl_FragColor = vec4(fragColor * 0.2 + fragColor * brightness * 0.8, 1.0);
+            //gl_FragColor = vec4(fragColor, 1.0);
         }
     `;
 
@@ -160,6 +184,29 @@ function InitDemo() {
         return Math.pow(x - px, 2) + Math.pow(y - py, 2);
     };
 
+    var ortSession = null;
+
+    async function load() {
+        try {
+            //console.log('check');
+            //const session = await new ort.InferenceSession.create("./onnx_model_5.onnx");
+            //console.log(session);
+            ortSession = await ort.InferenceSession.create("./onnx_model_6.onnx",
+                //    { executionProviders: ['wasm'] }
+                //);
+                //console.log(session);
+                { executionProviders: ["wasm"] });
+            //console.log(session);
+            return ortSession;
+        } catch (e) {
+            document.write(`failed to inference ONNX model: ${e}.`);
+        }
+    }
+
+    load().then(() => {
+        console.log("Модель готова к использованию");
+    });
+
     //console.log(mathCalc.ABRACADABRA);
     //console.log(mathCalc.findPointOnSegment([0, 1, 1], [1, 2, 3], 1));
     //console.log(mathCalc.findPointOnOrtSegment([0, 1, 1], [1, 2, 3], 1));
@@ -171,8 +218,16 @@ function InitDemo() {
     var canvas = canvases[0];
     var gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
 
-    const ext = gl.getExtension("OES_element_index_uint");
-    if (ext) {
+    const ext1 = gl.getExtension("OES_element_index_uint");
+    if (ext1) {
+        console.log("extension works")
+    }
+    else {
+        console.log("extension doesn't work")
+    }
+
+    const ext2 = gl.getExtension("OES_standard_derivatives");
+    if (ext2) {
         console.log("extension works")
     }
     else {
@@ -186,6 +241,13 @@ function InitDemo() {
 
     var canvas2 = canvases[1];
     var ctx = canvas2.getContext("2d");
+
+    var canvas3 = canvases[2];
+    var image_ctx = canvas3.getContext('2d');
+
+    var canvas4 = canvases[3];
+    var mask_ctx = canvas4.getContext('2d');
+
     //var contextScale = 10;
 
     var CANVAS_SCALE = 1
@@ -195,6 +257,14 @@ function InitDemo() {
 
     canvas2.width = canvas2.clientWidth;
     canvas2.height = canvas2.clientHeight;
+
+    //console.log(canvas3.clientWidth, canvas3.clientHeight, canvas4.clientWidth, canvas4.clientHeight);
+
+    canvas3.width = canvas3.clientWidth;
+    canvas3.height = canvas3.clientHeight
+
+    canvas4.width = canvas4.clientWidth;
+    canvas4.height = canvas4.clientHeight;
 
     //console.log(canvas.width, canvas.height, canvas.clientWidth, canvas.clientHeight);
 
@@ -236,7 +306,8 @@ function InitDemo() {
 
     //gl.viewport(0, 0, window.innerWidth, window.innerHeight);
 
-    gl.clearColor(0, 0.3, 0.3, 0.3);
+    //gl.clearColor(0, 0.3, 0.3, 0.3);
+    gl.clearColor(0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
 
@@ -245,7 +316,7 @@ function InitDemo() {
 
 
     var roverMode = false;
-    var roverCameraShift = 4;
+    var roverCameraShift = 9;
 
     //gl.depthRange(0.2, 0.8);
 
@@ -313,7 +384,7 @@ function InitDemo() {
     // Create buffer
     //
 
-    var MODEL_SCALE = 10;
+    var MODEL_SCALE = 4;
     var pathEpsilon = 0.001;
 
     var redHeight = 1.0;//1.0
@@ -322,8 +393,8 @@ function InitDemo() {
 
     var boxVertices = [];
 
-    var fieldWidth = 100;//20;
-    var fieldHeight = 100;//20;
+    var fieldWidth = 300;//20;
+    var fieldHeight = 300;//20;
 
     var maxHeight = -Infinity;
     var minHeight = Infinity;
@@ -384,9 +455,10 @@ function InitDemo() {
         return f00 * (1 - u) + f10 * u + (f01 - f00) * v * (1 - u) + (f11 - f10) * u * v;
     }
 
-    var perlinTick = 7;
+    var perlinTick = 40;
 
     var randomHeights = [];
+    var HEIGHT_SCALE = 10;
 
     var widthRH = Math.floor((fieldWidth - 1) * SQRT32 / perlinTick) + 2;
     var heightRH = Math.floor((fieldHeight - 0.5) / perlinTick) + 2;
@@ -395,17 +467,29 @@ function InitDemo() {
         for (var j = 0; j < heightRH; j++) {
             //console.log(i * SQRT32 * perlinTick, (j + (i % 2) / 2) * perlinTick);
             //console.log(i * perlinTick, j * perlinTick);
-            randomHeights.push(MODEL_SCALE * Math.random());
+            randomHeights.push(HEIGHT_SCALE * Math.random());
         }
     }
 
     //console.log(widthRH, heightRH);
     //console.log(randomHeights);
 
+    var randint = function (min_value, max_value) {
+        return Math.floor(Math.random() * (max_value - min_value)) + min_value;
+    }
+
+    //console.log(createSmallRock());
+
     var displacementMap = [];
 
     for (var i = 0; i < fieldWidth * fieldHeight; i++) {
         displacementMap.push(Math.random());
+    }
+
+    for (var i = 0; i < fieldWidth; i++) {
+        for (var j = 0; j < fieldHeight; j++) {
+            boxVertices.push(MODEL_SCALE * i * SQRT32, 0.0, MODEL_SCALE * (j + (i % 2) / 2), 0.5, 0.5, 0.5);
+        }
     }
 
     for (var i = 0; i < fieldWidth; i++) {
@@ -438,9 +522,13 @@ function InitDemo() {
                 randomHeights[interI * heightRH + interJ + 1],
                 randomHeights[(interI + 1) * heightRH + interJ],
                 randomHeights[(interI + 1) * heightRH + interJ + 1],
-            ) * MODEL_SCALE + displacementMap[i * fieldHeight + j] * MODEL_SCALE * 0.0;
+            ) * HEIGHT_SCALE * 1.2; //+ displacementMap[i * fieldHeight + j] * HEIGHT_SCALE * 0.0;
+
+            tmpHeight += (Math.random() - 0.5) * HEIGHT_SCALE * 0.1;
 
             //console.log(tmpHeight);
+
+            //tmpHeight = Math.random() * HEIGHT_SCALE;
 
 
             maxHeight = Math.max(maxHeight, tmpHeight);
@@ -470,10 +558,145 @@ function InitDemo() {
             //}
             //console.log(tmpRed, tmpGreen, tmpBlue);
             //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), tmpHeight, tmpHeight, tmpHeight);
-            boxVertices.push(MODEL_SCALE * i * SQRT32, tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), 0.0, 1.0, 0.0);
+
+            //boxVertices.push(MODEL_SCALE * i * SQRT32, tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), 0.5, 0.5, 0.5);
+            boxVertices[6 * (i * fieldHeight + j) + 1] = tmpHeight;
+
             //boxVertices.push(MODEL_SCALE * i * SQRT32, MODEL_SCALE * tmpHeight, MODEL_SCALE * (j + (i % 2) / 2), Math.random(), Math.random(), Math.random());
         }
     }
+
+    var createSmallRock = function () {
+        var r_i = randint(0, fieldWidth);
+        var r_j = randint(0, fieldHeight);
+        var top = [
+            [r_i, r_j]
+        ];
+        return top;
+    }
+
+    var smallRocks = Array.from({ length: 200 }, (_, i) => createSmallRock()); //200
+    //var smallRocks = [];
+
+    for (const items of smallRocks) {
+
+        for (const item of items) {
+
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 1] += 0.3 * HEIGHT_SCALE + (Math.random() - 0.5) * HEIGHT_SCALE;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 3] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 4] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 5] = 0.8;
+        }
+    }
+
+    var createMediumRock = function () {
+        var r_i = randint(0, fieldWidth - 1);
+        var r_j = randint(0, fieldHeight - 1);
+        var top = [
+            [r_i, r_j],
+            [r_i, r_j + 1],
+            [r_i + 1, r_j + r_i % 2]
+        ];
+        return top;
+    }
+
+    var mediumRocks = Array.from({ length: 150 }, (_, i) => createMediumRock()); //150
+    //var smallRocks = [];
+
+    for (const items of mediumRocks) {
+
+        for (const item of items) {
+
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 1] += 0.5 * HEIGHT_SCALE + (Math.random() - 0.5) * HEIGHT_SCALE;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 3] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 4] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 5] = 0.8;
+        }
+    }
+
+    var createBigRock = function () {
+        var r_i = randint(1, fieldWidth - 2);
+        var r_j = randint(1, fieldHeight - 2);
+        var top = [
+            [r_i, r_j],
+            [r_i, r_j + 1],
+            [r_i + 1, r_j + r_i % 2 - 1],
+            [r_i + 1, r_j + r_i % 2],
+            [r_i + 1, r_j + r_i % 2 + 1],
+            [r_i + 2, r_j],
+            [r_i + 2, r_j + 1]
+        ];
+        return top;
+    }
+
+    var bigRocks = Array.from({ length: 100 }, (_, i) => createBigRock()); //100
+    //var bigRocks = [];
+
+    for (const items of bigRocks) {
+
+        for (const item of items) {
+
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 1] += 1.0 * HEIGHT_SCALE + (Math.random() - 0.5) * HEIGHT_SCALE;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 3] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 4] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 5] = 0.8;
+        }
+    }
+
+    var createHugeRock = function () {
+        var r_i = randint(3, fieldWidth - 5);
+        var r_j = randint(3, fieldHeight - 5);
+        var top = [
+            [r_i, r_j],
+            [r_i, r_j + 1],
+            [r_i, r_j + 2],
+
+            [r_i + 1, r_j + r_i % 2 - 1],
+            [r_i + 1, r_j + r_i % 2],
+            [r_i + 1, r_j + r_i % 2 + 1],
+            [r_i + 1, r_j + r_i % 2 + 2],
+
+            [r_i + 2, r_j - 1],
+            [r_i + 2, r_j],
+            [r_i + 2, r_j + 1],
+            [r_i + 2, r_j + 2],
+            [r_i + 2, r_j + 3],
+
+            [r_i + 3, r_j + r_i % 2 - 1],
+            [r_i + 3, r_j + r_i % 2],
+            [r_i + 3, r_j + r_i % 2 + 1],
+            [r_i + 3, r_j + r_i % 2 + 2],
+
+            [r_i + 4, r_j],
+            [r_i + 4, r_j + 1],
+            [r_i + 4, r_j + 2],
+        ];
+        return top;
+    }
+
+    var hugeRocks = Array.from({ length: 50 }, (_, i) => createHugeRock()); //50
+    //var bigRocks = [];
+
+    for (const items of hugeRocks) {
+
+        for (const item of items) {
+
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 1] += 2.0 * HEIGHT_SCALE + (Math.random() - 0.5) * HEIGHT_SCALE;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 3] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 4] = 0.8;
+            boxVertices[6 * (item[0] * fieldHeight + item[1]) + 5] = 0.8;
+        }
+    }
+
+    //for (var i = 0; i < fieldWidth; i++) {
+    //    for (var j = 0; j < fieldHeight; j++) {
+    //
+    //        //boxVertices[6 * (i * fieldHeight + j)]
+    //        //boxVertices[6 * (i * fieldHeight + j) + 1]
+    //        //boxVertices[6 * (i * fieldHeight + j) + 2]
+    //
+    //    }
+    //}
 
     var createNormalMap = function (box, w, h) {
         for (var i = 0; i < w; i++) {
@@ -498,7 +721,7 @@ function InitDemo() {
         }
     }
 
-    var roverScale = 5.0;
+    var roverScale = 10.0;
 
     //cube rover
     //boxVertices.push(1, 0, 1, 1.0, 0.0, 1.0);
@@ -839,7 +1062,9 @@ function InitDemo() {
     //glMatrix.mat4.multiplyScalar(modelMatrix, modelMatrix, 10);
     //console.log(modelMatrix);
     glMatrix.mat4.identity(viewMatrix);
-    var cameraPosition = [0, 2, 0];
+    //var cameraPosition = [0, 150, 0];
+    var cameraPosition = [boxVertices[0], boxVertices[1], boxVertices[2]];
+    //console.log(cameraPosition);
     var cameraSpeed = 10.0;
     var cameraRho = 1;
     var cameraYaw = 0.0;
@@ -890,7 +1115,7 @@ function InitDemo() {
 
     //console.log(roverPosition);
     //console.log(roverTargetPosition);
-    var roverSpeed = 4.0;
+    var roverSpeed = 7.0;
     var roverSensitivity = 0.2;
 
     var aspectRatio = canvas.clientWidth / canvas.clientHeight;
@@ -1061,7 +1286,7 @@ function InitDemo() {
         var forward = [rovTarPos[0] - rovPos[0], rovTarPos[1] - rovPos[1], rovTarPos[2] - rovPos[2]];
         //console.log(forward);
         //console.log(forward);
-        var forwardTicks = 50;
+        var forwardTicks = 100;
         var backwardTicks = 200;
 
         var startX = rovPos[0] - backwardTicks * forward[0]; // * rovSpd
@@ -1237,10 +1462,18 @@ function InitDemo() {
         ctx.strokeStyle = "#ff00ff";
         ctx.lineWidth = lineWidth;
         ctx.beginPath();
-        ctx.moveTo(suspensions[0][0], suspensions[0][1]);
-        for (var i = 1; i < suspensions.length; i++) {
-            ctx.lineTo(suspensions[i][0], suspensions[i][1]);
-        }
+        //ctx.moveTo(suspensions[0][0], suspensions[0][1]);
+        //console.log(suspensions);
+        //for (var i = 1; i < suspensions.length; i++) {
+        //    ctx.lineTo(suspensions[i][0], suspensions[i][1]);
+        //}
+        ctx.moveTo(suspensions[1][0], suspensions[1][1]);
+        ctx.lineTo(suspensions[0][0], suspensions[0][1]);
+        var kernelWidth = 50.0;
+        var vec = [suspensions[0][0] - suspensions[1][0], suspensions[0][1] - suspensions[1][1]];
+        var n = normaVector(vec);
+        var vec = vec.map(x => x / n);
+        ctx.lineTo(suspensions[0][0] + vec[0] * kernelWidth, suspensions[0][1] + vec[1] * kernelWidth);
         ctx.stroke();
     }
 
@@ -1299,7 +1532,7 @@ function InitDemo() {
         ctx.scale(contextScale, -contextScale);
         //console.log(pos[1]);
         //console.log(canvas2.height);
-        ctx.translate(-pos[0], -pos[1] + canvas2.height / (2 * contextScale));
+        ctx.translate(-pos[0] - canvas2.width / (10 * contextScale), -pos[1] + canvas2.height / (2.5 * contextScale));
         //ctx.scale(contextScale, contextScale);
         //var b = -path[0][0];
         //var k = canvas2.width / (path[path.length - 1][0] - path[0][0]);
@@ -1407,7 +1640,7 @@ function InitDemo() {
     var roverSuspensionsDistance = 100.0;
     var roverMass = 100.0;
     var gravityAcceleration = 10.0;
-    var elasticity = 1.0;
+    var elasticity = 0.6;
 
     //console.log(compareEpsilon);
 
@@ -1908,6 +2141,20 @@ function InitDemo() {
         return 1 / (1 + Math.exp(-x * k));
     }
 
+    var area = function (a_x, a_y, b_x, b_y, c_x, c_y) {
+        return (b_x - a_x) * (c_y - a_y) - (b_y - a_y) * (c_x - a_x);
+    }
+
+    var intersect_1 = function (a, b, c, d) {
+        if (a > b) b = [a, a = b][0];
+        if (c > d) d = [c, c = d][0];
+        return Math.max(a, c) <= Math.min(b, d);
+    }
+
+    var checkIntersectionSegSeg = function (a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y) {
+        return intersect_1(a_x, b_x, c_x, d_x) * intersect_1(a_y, b_y, c_y, d_y) * (area(a_x, a_y, b_x, b_y, c_x, c_y) * area(a_x, a_y, b_x, b_y, d_x, d_y) <= 0) * (area(c_x, c_y, d_x, d_y, a_x, a_y) * area(c_x, c_y, d_x, d_y, b_x, b_y) <= 0);
+    }
+
     var workingContext = function () {
         var path = roverBackForwardPath();
         var pos = roverContextPosition();
@@ -2033,6 +2280,14 @@ function InitDemo() {
         var N3 = [dynamic[4], dynamic[5]];
         var N4 = [dynamic[6], dynamic[7]];
 
+        var Delta_1 = [dynamic[8], dynamic[9]];
+        var Delta_2 = [dynamic[10], dynamic[11]];
+        var Delta_3 = [dynamic[12], dynamic[13]];
+        var Delta_4 = [dynamic[14], dynamic[15]];
+        var Delta = [dynamic[16], dynamic[17]];
+
+        var new_gamma = dynamic[18];
+
         var NP1 = normalizeVector([wheel1[0] - surf1[0], wheel1[1] - surf1[1]]);
         var NP2 = normalizeVector([wheel2[0] - surf2[0], wheel2[1] - surf2[1]]);
         var NP3 = normalizeVector([wheel3[0] - surf3[0], wheel3[1] - surf3[1]]);
@@ -2071,6 +2326,25 @@ function InitDemo() {
         N3 = normalizeVector(N3).map(x => x * 30);
         N4 = normalizeVector(N4).map(x => x * 30);
 
+        var checkIntersection = 0;
+
+        for (var i = 0; i < simplePath.length - 1; i++) {
+            var a_x = simplePath[i][0];
+            var a_y = simplePath[i][1];
+            var b_x = simplePath[i + 1][0];
+            var b_y = simplePath[i + 1][1];
+            var c_x = suspension1[0];
+            var c_y = suspension1[1];
+            var kernelWidth = 50.0;
+            var vec = [suspension1[0] - suspension2[0], suspension1[1] - suspension2[1]];
+            var n = normaVector(vec);
+            var vec = vec.map(x => x / n);
+            var d_x = suspension1[0] + vec[0] * kernelWidth;
+            var d_y = suspension1[1] + vec[1] * kernelWidth;
+            //ctx.lineTo(suspensions[0][0] + vec[0] * kernelWidth, suspensions[0][1] + vec[1] * kernelWidth);
+            checkIntersection += checkIntersectionSegSeg(a_x, a_y, b_x, b_y, c_x, c_y, d_x, d_y);
+        }
+
         var lineWidth = 2 / contextScale;
 
         drawContext([
@@ -2085,15 +2359,18 @@ function InitDemo() {
             `pos: ${pos.map(x => x.toFixed(3))}
 wheel_1: ${wheel1.map(x => x.toFixed(3))}
 wheel_2: ${wheel2.map(x => x.toFixed(3))}
+wheel_3: ${wheel3.map(x => x.toFixed(3))}
+wheel_4: ${wheel4.map(x => x.toFixed(3))}
 roverWheelDistance: ${roverWheelDistance.toFixed(3)}
 d(w_1, w_2): ${distanceBetweenVectors(wheel1, wheel2).toFixed(3)}
 d(w_3, w_4): ${distanceBetweenVectors(wheel3, wheel4).toFixed(3)}
 roverSuspensionsDistance: ${roverSuspensionsDistance.toFixed(3)}
-d(s_1, s_2): ${distanceBetweenVectors(suspension1, suspension2).toFixed(3)}
-surf1: ${surf1.map(x => x.toFixed(3))}
-surf2: ${surf2.map(x => x.toFixed(3))}
-surf3: ${surf3.map(x => x.toFixed(3))}
-surf4: ${surf4.map(x => x.toFixed(3))}`;
+d(s_1, s_2): ${distanceBetweenVectors(suspension1, suspension2).toFixed(3)}`;
+        document.getElementById('info2').innerHTML = "";
+        //surf1: ${surf1.map(x => x.toFixed(3))}
+        //surf2: ${surf2.map(x => x.toFixed(3))}
+        //surf3: ${surf3.map(x => x.toFixed(3))}
+        //surf4: ${surf4.map(x => x.toFixed(3))}`;
 
 
         var danger_1 = elasticity * Math.abs(N1_n) - Math.abs(N1_t);
@@ -2101,10 +2378,15 @@ surf4: ${surf4.map(x => x.toFixed(3))}`;
         var danger_3 = elasticity * Math.abs(N3_n) - Math.abs(N3_t);
         var danger_4 = elasticity * Math.abs(N4_n) - Math.abs(N4_t);
 
-        var condition_check_1 = danger_1 > 0;
-        var condition_check_2 = danger_2 > 0;
-        var condition_check_3 = danger_3 > 0;
-        var condition_check_4 = danger_4 > 0;
+        var condition_check_1 = danger_1 <= 0.0; // > - непроскальзывает, <= - проскальзывает
+        var condition_check_2 = danger_2 <= 0.0;
+        var condition_check_3 = danger_3 <= 0.0;
+        var condition_check_4 = danger_4 <= 0.0;
+
+        //console.log(condition_check_1);
+        //console.log(condition_check_2);
+        //console.log(condition_check_3);
+        //console.log(condition_check_4);
 
         var danger_norm_1 = Math.sqrt((elasticity * Math.abs(N1_n)) ** 2 + Math.abs(N1_t) ** 2);
         var danger_norm_2 = Math.sqrt((elasticity * Math.abs(N2_n)) ** 2 + Math.abs(N2_t) ** 2);
@@ -2123,6 +2405,11 @@ surf4: ${surf4.map(x => x.toFixed(3))}`;
         //var danger_level_3 = sigmoid(-danger_3, 1e-2);
         //var danger_level_4 = sigmoid(-danger_4, 1e-2);
 
+        var danger_level_1 = Math.abs(N1_t) / (Math.abs(N1_n) * elasticity);
+        var danger_level_2 = Math.abs(N2_t) / (Math.abs(N2_n) * elasticity);
+        var danger_level_3 = Math.abs(N3_t) / (Math.abs(N3_n) * elasticity);
+        var danger_level_4 = Math.abs(N4_t) / (Math.abs(N4_n) * elasticity);
+
         var general_danger_level = Math.max(danger_level_1, danger_level_2, danger_level_3, danger_level_4);
 
         document.getElementById("info3").innerHTML =
@@ -2134,13 +2421,32 @@ non-slippage: ${Boolean(condition_check_1 + condition_check_2 + condition_check_
 level_1: ${(danger_level_1 * 100).toFixed(3)}%
 level_2: ${(danger_level_2 * 100).toFixed(3)}%
 level_3: ${(danger_level_3 * 100).toFixed(3)}%
-level_4: ${(danger_level_4 * 100).toFixed(3)}%
-`;
+level_4: ${(danger_level_4 * 100).toFixed(3)}%`;
 
-        return general_danger_level;
+        //document.getElementById("info3").innerHTML = `проскальзывание: `;
+        //document.getElementById("info3").style.color = 'red';
+        document.getElementById("info3").innerHTML =
+            `проскальзывание: <div style="display: inline; color: ${condition_check_1 + condition_check_2 + condition_check_3 + condition_check_4 ? "red" : "green"}">${condition_check_1 + condition_check_2 + condition_check_3 + condition_check_4 ? "да" : "нет"}</div>
+уровень опасности первого    колеса: <div style="display: inline; color: ${danger_level_1 < 1.0 ? "green" : "red"}">${(danger_level_1 * 100).toFixed(3)}%</div>
+уровень опасности второго    колеса: <div style="display: inline; color: ${danger_level_2 < 1.0 ? "green" : "red"}">${(danger_level_2 * 100).toFixed(3)}%</div>
+уровень опасности третьего   колеса: <div style="display: inline; color: ${danger_level_3 < 1.0 ? "green" : "red"}">${(danger_level_3 * 100).toFixed(3)}%</div>
+уровень опасности четвертого колеса: <div style="display: inline; color: ${danger_level_4 < 1.0 ? "green" : "red"}">${(danger_level_4 * 100).toFixed(3)}%</div>
+пересечение: <div style="display: inline; color: ${checkIntersection ? "red" : "green"}">${checkIntersection ? "да" : "нет"}</div>`;
+        //document.getElementById("info3").innerHTML = '<div style="color: red;">Красный текст</div>';
+        //delta_1: ${Delta_1.map(x => x.toFixed(3))}
+        //delta_2: ${Delta_2.map(x => x.toFixed(3))}
+        //delta_3: ${Delta_3.map(x => x.toFixed(3))}
+        //delta_4: ${Delta_4.map(x => x.toFixed(3))}
+        //delta: ${Delta.map(x => x.toFixed(3))}
+        //`;
+
+        return [general_danger_level, Delta_1, Delta_2, Delta_3, Delta_4, Delta];
     }
 
-    var general_danger_level = workingContext();
+    var workingContextResult = workingContext();
+    var general_danger_level = workingContextResult[0];
+    //console.log(wheel1);
+
 
     //drawContext([findWheelCenter(roverBackForwardPath())], roverContextPosition());
 
@@ -2345,7 +2651,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
@@ -2422,7 +2729,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2479,7 +2787,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2534,7 +2843,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2655,7 +2965,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2742,7 +3053,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2817,7 +3129,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -2887,7 +3200,8 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
 
                 //roverBackForwardPath();
                 //drawContext(roverBackForwardPath(), roverContextPosition());
-                general_danger_level = workingContext();
+                workingContextResult = workingContext();
+                general_danger_level = workingContextResult[0];
 
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(boxVertices), gl.STATIC_DRAW); //important1
                 gl.vertexAttribPointer(
@@ -3263,6 +3577,9 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
                 canvas.removeEventListener('mousemove', onMouseMove, false);
                 roverMode = true;
             }
+            if (event.key == 'i') {
+                inference();
+            }
         },
         false
     );
@@ -3286,8 +3603,10 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
         }
     }
 
-    var btn = document.getElementById("btn");
-    btn.addEventListener("click", function () {
+    //console.log("check");
+    var bttnScreen_1 = document.getElementsByName("Screen 1")[0];
+    //console.log(bttn);
+    bttnScreen_1.addEventListener("click", function () {
         var a = document.createElement("a");
         document.body.appendChild(a);
         a.href = canvas.toDataURL("image/png", 1.0);
@@ -3295,6 +3614,257 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
         a.download = "canvas-image.png";
         a.click();
         document.body.removeChild(a);
+    });
+
+    var bttnScreen_2 = document.getElementsByName("Screen 2")[0];
+    //console.log(bttn);
+    bttnScreen_2.addEventListener("click", function () {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.href = canvas2.toDataURL("image/png", 1.0);
+        console.log(a.href);
+        a.download = "canvas-image.png";
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    var bttnScreen_3 = document.getElementsByName("Screen 3")[0];
+    //console.log(bttn);
+    bttnScreen_3.addEventListener("click", function () {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.href = canvas3.toDataURL("image/png", 1.0);
+        console.log(a.href);
+        a.download = "canvas-image.png";
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    var bttnScreen_4 = document.getElementsByName("Screen 4")[0];
+    //console.log(bttn);
+    bttnScreen_4.addEventListener("click", function () {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.href = canvas4.toDataURL("image/png", 1.0);
+        console.log(a.href);
+        a.download = "canvas-image.png";
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    var SoftMaxArgMax = function (array, image_size = 256) {
+        result = [];
+        for (var i = 0; i < image_size; i++) {
+            for (var j = 0; j < image_size; j++) {
+                soft = [array[i * image_size + j],
+                array[image_size * image_size * 1 + i * image_size + j],
+                array[image_size * image_size * 2 + i * image_size + j],
+                array[image_size * image_size * 3 + i * image_size + j]
+                ];
+                expsoft = soft.map(x => Math.exp(x));
+                sum = expsoft.reduce((a, b) => a + b, 0);
+                sftmax = expsoft.map(x => x / sum);
+                //console.log(sftmax.indexOf(Math.max(...sftmax)));
+                result.push(sftmax.indexOf(Math.max(...sftmax)));
+            }
+        }
+        //console.log(result);
+        return result;
+    }
+
+    //var sfam = SoftMaxArgMax();
+
+    var draw_mask = function (result, image_size = 256) {
+        var colors = { 0: [0, 0, 0], 1: [255, 0, 0], 2: [0, 255, 0], 3: [0, 0, 255] };
+        for (var i = 0; i < image_size; i++) {
+            for (var j = 0; j < image_size; j++) {
+                value = result[i * image_size + j];
+                //console.log(`rgb(${colors[value].join(',')})`)
+                mask_ctx.fillStyle = `rgb(${colors[value].join(',')})`;
+                mask_ctx.fillRect(j, i, 1, 1);
+            }
+        }
+    }
+
+    var calculateSuggestion = function (result, image_size) {
+        var left_pixels = 0;
+        var right_pixels = 0;
+        for (var i = 0; i < image_size; i++) {
+            for (var j = 0; j < Math.floor(image_size / 2); j++) {
+                value = result[i * image_size + j];
+                if (value == 2 || value == 3) {
+                    left_pixels++;
+                }
+            }
+        }
+        for (var i = 0; i < image_size; i++) {
+            for (var j = Math.floor(image_size / 2); j < image_size; j++) {
+                value = result[i * image_size + j];
+                if (value == 2 || value == 3) {
+                    right_pixels++;
+                }
+            }
+        }
+        return left_pixels >= right_pixels ? 'повернуть направо' : 'повернуть налево';
+    }
+
+    //for (var i = 0; i < 256; i++) {
+    //    for (var j = 0; j < 256; j++) {
+    //        value = sfam[i * 256 + j];
+    //        //console.log(`rgb(${colors[value].join(',')})`)
+    //        mask_ctx.fillStyle = `rgb(${colors[value].join(',')})`;
+    //        mask_ctx.fillRect(j, i, 1, 1);
+    //    }
+    //}
+
+    //console.log(gl.drawingBufferHeight, gl.drawingBufferWidth);
+
+    var canvas_fake = document.createElement('canvas');
+
+    canvas_fake.width = canvas.width;
+    canvas_fake.height = canvas.height;
+
+    var ctx_fake = canvas_fake.getContext('2d');
+
+    //console.log(canvas_fake.width, canvas.height, (canvas_fake.width - canvas_fake.height) / 2, (canvas_fake.width + canvas_fake.height) / 2);
+
+    var suggestion = '';
+
+    //const session = new onnx.InferenceSession
+
+    //ort.env.wasm.numThreads = 1;
+    //ort.env.wasm.simd = false;
+
+    //const session = new ort.InferenceSession
+
+    async function inference(image_size = 256) {
+        try {
+            //console.log('check');
+            //const session = await new ort.InferenceSession.create("./onnx_model_5.onnx");
+            //console.log(session);
+            //const session = await ort.InferenceSession.create("./onnx_model_7.onnx",
+            //    { executionProviders: ['wasm'] }
+            //);
+            //console.log(session);
+            //    { executionProviders: ["wasm"] });
+            //console.log(session);
+            //const data = Float32Array.from({ length: 1 * 3 * 256 * 256 }, () => Math.random());
+            //const tensor = new ort.Tensor('float32', data, [1, 3, 256, 256]);
+            //console.log(data);
+            //console.log(tensor);
+            //const feeds = { a: tensor };
+            //const result = await session.run({ "input.1": tensor });
+            //console.log(result);
+
+            //const output = new ort.Tensor('float32', result[2230].cpuData, result[2230].dims);
+            //console.log(output);
+            //console.log(output.softmax(axis = 1));
+            //return session;
+            //console.log(canvas.width, canvas.height);
+
+            //var imgData = gl.getImageData(0, 0, canvas.width, canvas.height);
+
+            //var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+            //gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+
+            //console.log(pixels);
+
+            const session = ortSession;
+
+            ctx_fake.drawImage(gl.canvas, 0, 0);
+
+            //var src_1 = cv.matFromArray(gl.drawingBufferWidth, gl.drawingBufferHeight, cv.CV_8UC1, pixels);
+
+            var imgData = ctx_fake.getImageData(0, 0, canvas_fake.width, canvas_fake.height);
+            //var imgData = ctx_fake.getImageData((canvas_fake.width - canvas_fake.height) / 2, 0, canvas_fake.height, canvas_fake.height);
+
+            var src_1 = cv.matFromImageData(imgData);
+
+            //console.log(src_1);
+
+            var src_2 = new cv.Mat();
+            cv.cvtColor(src_1, src_2, cv.COLOR_RGBA2RGB, 0);
+            ////console.log(d);
+            //
+            var src_3 = new cv.Mat();
+            var dsize = new cv.Size(image_size, image_size);
+            cv.resize(src_2, src_3, dsize, 0, 0, cv.INTER_AREA);
+            //
+            cv.imshow(canvas3, src_3);
+
+            //console.log(src_3);
+
+            var image = src_3.data;
+
+            src_1.delete();
+            src_2.delete();
+            src_3.delete();
+
+            //console.log(image);
+            //console.log(image[0] - 100);
+
+            //256 * 256 * 3
+
+            var mean = [0.3848, 0.3846, 0.3848];
+            var std = [0.1290, 0.1290, 0.1290];
+
+            var norm_image = Array.from({ length: image_size * image_size * 3 }, () => 0.0);
+
+            for (var i = 0; i < image.length; i += 3) {
+                norm_image[Math.floor(i / 3)] = (image[i] - mean[0] * 255) / (std[0] * 255);
+                norm_image[image_size * image_size + Math.floor(i / 3)] = (image[i + 1] - mean[1] * 255) / (std[1] * 255);
+                norm_image[image_size * image_size * 2 + Math.floor(i / 3)] = (image[i + 2] - mean[2] * 255) / (std[2] * 255);
+            }
+
+            //console.log(norm_image);
+
+            const data = new Float32Array(norm_image);
+
+            const tensor = new ort.Tensor('float32', data, [1, 3, image_size, image_size]);
+
+            console.log('check');
+
+            const logits = await session.run({ "input.1": tensor });
+
+            //console.log(logits);
+
+            const result = SoftMaxArgMax(logits[session.outputNames[0]].cpuData, image_size);
+
+            //console.log(result);
+
+            draw_mask(result, image_size);
+
+            suggestion = calculateSuggestion(result, image_size);
+
+            //console.log(data);
+
+            //console.log(norm_image);
+
+            //rgbArray = [];
+            //for (var i = 0; i < imgData.data.length; i += 4) {
+            //    rgbArray.push(imgData.data[i], imgData.data[i + 1], imgData.data[i + 2]);
+            //}
+            //console.log(rgbArray);
+
+            //image = new ort.Tensor('float32', rgbArray, [1, 256, 256, 3]);
+
+        } catch (e) {
+            document.write(`failed to inference ONNX model: ${e}.`);
+        }
+    }
+
+    //const model = getSession();
+    //
+    //var inference = function (model) {
+    //    console.log(model);
+    //}
+
+    var bttnInference = document.getElementsByName("Inference")[0];
+    //console.log(bttn);
+    bttnInference.addEventListener("click", function () {
+        //inference(model);
+        inference(256);
     });
 
     //document.addEventListener('keydown', (e) => onKeyDown(e), false);
@@ -3307,7 +3877,23 @@ level_4: ${(danger_level_4 * 100).toFixed(3)}%
     var identityMatrix = new Float32Array(16);
     glMatrix.mat4.identity(identityMatrix);
     //var angle = 0;
+
+
+    //async function test() {
+    //    const sess = new onnx.InferenceSession();
+    //    await sess.loadModel('onnx_model.onnx');
+    //    console.log('check');
+    //}
+    //
+    //test();
+    //console.log('check');
+    //console.log(ort);
+
+    //inference(model);
+
     function loop() {
+
+        //console.log('check');
 
         //var btn = document.getElementById("btn");
         //btn.addEventListener("click", function () {
@@ -3393,7 +3979,16 @@ rover forward: ${check2.map(x => x.toFixed(3))} ${mathCalc.euclidNorm(check2).to
 scale: ${MODEL_SCALE}
 maxHeight: ${maxHeight.toFixed(3)}
 minHeight: ${minHeight.toFixed(3)}
-roverMode: ${roverMode}`;
+roverMode: ${roverMode}
+suggestion: turn on ${suggestion}`;
+
+        document.getElementById('information').innerHTML =
+            `уровень опасности: <div style="display: inline; color: ${general_danger_level < 1.0 ? "lightgreen" : "coral"}">${(general_danger_level * 100).toFixed(3)}%</div>
+планетоход: ${roverPosition.map(x => x.toFixed(3))}
+направление: ${check2.map(x => x.toFixed(3))}
+предложение: ${suggestion}`;
+        //document.getElementById('information').innerHTML =
+
 
         //i: ${ i } j: ${ j }
         //res_i: ${ res_i.toFixed(3) } res_j: ${ res_j.toFixed(3) }
@@ -3445,7 +4040,8 @@ roverMode: ${roverMode}`;
         //glMatrix.vec4.transformMat4(result, result, TranslateRotateRotateTranslate(0, 0));
         //targetPosition = [result[0], result[1], result[2]];
 
-        gl.clearColor(0, 0.3, 0.3, 0.3);
+        //gl.clearColor(0, 0.3, 0.3, 0.3);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         //check
@@ -3486,17 +4082,19 @@ roverMode: ${roverMode}`;
         var indexType = gl.UNSIGNED_INT;
         //console.log(gl.sizeInBytes(gl.FLOAT));
 
-        gl.useProgram(program1);
+        gl.useProgram(program2); //program1
         gl.drawElements(gl.TRIANGLES, trianglesLength, indexType, 0);
         gl.useProgram(program2);
-        gl.drawElements(gl.LINES, linesLength, indexType, 4 * trianglesLength); //multiple by indexType size in bytes: uint is 32 bits -> 4 bytes
+        //gl.drawElements(gl.LINES, linesLength, indexType, 4 * trianglesLength); //multiple by indexType size in bytes: uint is 32 bits -> 4 bytes
         gl.drawElements(gl.TRIANGLES, roverLength, indexType, 4 * (trianglesLength + linesLength));
         //gl.lineWidth(1.0);
         gl.drawElements(gl.LINES, roverLinesLength, indexType, 4 * (trianglesLength + linesLength + roverLength));
         //gl.lineWidth(0.1);
         //gl.drawElements(gl.LINES, linesLength, gl.UNSIGNED_SHORT, 20);
-        gl.drawElements(gl.TRIANGLES, 6, indexType, 4 * (trianglesLength + linesLength + roverLength + roverLinesLength));
-        gl.drawElements(gl.LINES, 8, indexType, 4 * (trianglesLength + linesLength + roverLength + roverLinesLength + 6));
+
+        //gl.drawElements(gl.TRIANGLES, 6, indexType, 4 * (trianglesLength + linesLength + roverLength + roverLinesLength));
+        //gl.drawElements(gl.LINES, 8, indexType, 4 * (trianglesLength + linesLength + roverLength + roverLinesLength + 6));
+
         requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);

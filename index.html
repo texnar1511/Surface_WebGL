@@ -1,23 +1,64 @@
 <!DOCTYPE html>
+<html lang="ru">
 
 <head>
+    <meta charset="utf-8">
     <title>WebGL</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/ico" href="./favicon.ico" />
 </head>
 
 <body>
-    <div id="canvas-wrapper">
-        <canvas id="canvas" class="canvas_style">Your browser doesn't support HTML5</canvas>
-        <div id="vertical_crosshair"></div>
-        <div id="horizontal_crosshair"></div>
-        <div id="information"></div>
-        <button id="btn">Screen</button>
+    <div id="main">
+        <div id="canvases_wrapper_1">
+            <div id="canvas-wrapper">
+                <canvas id="canvas" class="canvas_style">Your browser doesn't support HTML5</canvas>
+                <div id="vertical_crosshair"></div>
+                <div id="horizontal_crosshair"></div>
+                <div id="information"></div>
+            </div>
+            <div id="canvas2-wrapper">
+                <canvas id="canvas" class="canvas2_style">Your browser doesn't support HTML5</canvas>
+                <div id="info2"></div>
+                <div id="info3"></div>
+            </div>
+        </div>
+        <div id="canvases_wrapper_2">
+            <div id="canvas3-wrapper">
+                <canvas id="canvas" class="canvas3_style" name="cv_experiments">Your browser doesn't support
+                    HTML5</canvas>
+            </div>
+            <div id="canvas4-wrapper">
+                <canvas id="canvas" class="canvas4_style" name="mask">Your browser doesn't support
+                    HTML5</canvas>
+            </div>
+            <div id="buttons_wrapper">
+                <button name="Screen 1" id="bttn">Screen 1</button>
+                <button name="Screen 2" id="bttn">Screen 2</button>
+                <button name="Screen 3" id="bttn">Screen 3</button>
+                <button name="Screen 4" id="bttn">Screen 4</button>
+                <button name="Inference" id="bttn">Inference</button>
+            </div>
+        </div>
     </div>
-    <div id="canvas2-wrapper">
-        <canvas id="canvas" class="canvas2_style">Your browser doesn't support HTML5</canvas>
-        <div id="info2"></div>
-        <div id="info3"></div>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.webgpu.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.wasm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>
+    <!--<script src="ort.min.js"></script>-->
+    <!--<script src="ort.min.js"></script>-->
+    <!--<script src="ort.all.min.js"></script>-->
+    <!--<script src="ort.webgpu.min.js"></script>-->
+    <!--<script src="ort.wasm.min.js"></script>-->
+    <!--<script src="onnx.min.js"></script>-->
+
+    <script src="opencv.js" type="text/javascript"></script>
+    <!--<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>-->
+    <!--<script src="onnx.min.js"></script>-->
+    <!--<script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>-->
+    <!--<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>-->
+    <!--<script type="module" scr="node_modules/onnxruntime-web"></script>-->
     <script src="Scripts/gl-matrix.js"></script>
     <script src="Scripts/MathCalc.js"></script>
     <script src="Scripts/gauss-jordan.js"></script>
@@ -25,6 +66,8 @@
     <script src="Scripts/constants.js"></script>
     <script src="Scripts/functions.js"></script>
     <script src="Scripts/script5.js"></script>
+    <!--<script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>-->
+    <!--<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>-->
 </body>
 
 </html>
